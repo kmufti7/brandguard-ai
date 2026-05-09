@@ -1,0 +1,7 @@
+# Dev dependencies for BrandGuard AI.
+# Install runtime deps first via: pip install -r requirements.txt
+
+-r requirements.txt
+
+pytest>=8.0
+ruff>=0.6.0

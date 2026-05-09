@@ -1,0 +1,8 @@
+# Runtime dependencies for BrandGuard AI.
+# intelliflow-core v2 is installed separately as an editable local install:
+#   pip install -e ../intelliflow-core
+# It is the upstream governance kernel and is not published to PyPI.
+
+faiss-cpu>=1.8.0
+langgraph>=0.2.0
+ragas>=0.2.0
