@@ -78,13 +78,13 @@ Generates campaign copy grounded in a brand voice document and product fact shee
 
 #### Legal/Brand Review Gate
 
-Human-in-the-loop approval step with fail-closed semantics. Extends the Kill-Switch Guard primitive from `intelliflow-core` v2. Routing decisions (route to reviewer, auto-pass on whitelist, auto-block on blacklist) use deterministic rule evaluation, not LLM-judged classification. See ADR-003.
+Human-in-the-loop approval step with fail-closed semantics. Extends the Kill-Switch Guard primitive from `intelliflow-core`. Routing decisions (route to reviewer, auto-pass on whitelist, auto-block on blacklist) use deterministic rule evaluation, not LLM-judged classification. See ADR-003.
 
 #### Hallucination Evaluation Harness
 
 ragas-based evaluation framework. Tracks faithfulness, answer relevance, context precision, and context recall. Hallucination scoring is paired with a deterministic citation check; a high faithfulness score from ragas is necessary but not sufficient for release. See ADR-004.
 
-### 5.2 Reused governance primitives (from `intelliflow-core` v2)
+### 5.2 Reused governance primitives (from `intelliflow-core`)
 
 #### WORM Logger
 
@@ -109,7 +109,7 @@ The MVP is considered complete when all five criteria below are met. Each criter
 | Test suite | 12 or more tests passing across the four native components | `pytest` exit code 0; test count surfaced in CI output |
 | Hallucination evaluation | A ragas evaluation report exists for the golden dataset and is reproducible run-over-run | ragas report artifact committed under `evals/`; rerun produces consistent metric scores within tolerance |
 | Citation enforcement | Deterministic citation check rejects any generation with an uncited factual claim | Unit tests cover positive and negative cases; release-time check is the gate, not an LLM judge |
-| Lineage disclosure | README clearly discloses `intelliflow-core` v2 as the upstream governance kernel and links the IntelliFlow OS repo | Manual README review against lineage policy |
+| Lineage disclosure | README clearly discloses `intelliflow-core` as the upstream governance kernel and links the IntelliFlow OS repo | Manual README review against lineage policy |
 | Audit cleanliness | Codex audit pass on the project (architecture, lineage, language rules, scope discipline) returns clean | Codex audit run; report filed under `audits/` |
 
 ---

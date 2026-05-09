@@ -12,7 +12,7 @@ These items come from Kanban v1.2 backlog. None of them are in scope for v1.0.
 
 ### B1: LinkedIn launch post
 
-A LinkedIn announcement post timed to the v1.0 release. Disclose the upstream `intelliflow-core` v2 lineage in the post body (consistent with README policy). Out of scope for the build sessions; copy and timing are a separate decision.
+A LinkedIn announcement post timed to the v1.0 release. Disclose the upstream `intelliflow-core` lineage in the post body (consistent with README policy). Out of scope for the build sessions; copy and timing are a separate decision.
 
 **Status:** Future. Not for v1.0.
 

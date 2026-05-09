@@ -32,7 +32,7 @@ The product is designed and built as a standalone agentic marketing platform: ma
 
 ### Reused governance primitives
 
-BrandGuard reuses three governance primitives from the upstream `intelliflow-core` v2 SDK:
+BrandGuard reuses three governance primitives from the upstream `intelliflow-core` SDK:
 
 1. **WORM Logger.** Write-once, read-many audit trail. Every component decision is appended.
 2. **Kill-Switch Guard.** Fail-closed enforcement primitive that the Legal/Brand Review Gate extends.
@@ -42,7 +42,7 @@ BrandGuard reuses three governance primitives from the upstream `intelliflow-cor
 
 ## Lineage Disclosure
 
-BrandGuard AI consumes `intelliflow-core` v2 as an upstream SDK (`pip install -e` pattern during development). The kernel provides cross-cutting governance primitives that apply equally to regulated and non-regulated AI domains: write-once audit logging, fail-closed enforcement, and per-token cost tracking. BrandGuard reuses three of those primitives and adds four marketing-specific components on top.
+BrandGuard AI consumes `intelliflow-core` as an upstream SDK (`pip install -e` pattern during development). The kernel provides cross-cutting governance primitives that apply equally to regulated and non-regulated AI domains: write-once audit logging, fail-closed enforcement, and per-token cost tracking. BrandGuard reuses three of those primitives and adds four marketing-specific components on top.
 
 The kernel was originally factored out of regulated-industry work where audit-trail and fail-closed semantics are non-negotiable. Those same properties are useful in marketing AI for a different reason: brand reputation and legal exposure. Reusing the kernel keeps governance behavior consistent across products and avoids re-implementing the audit and kill-switch surfaces.
 

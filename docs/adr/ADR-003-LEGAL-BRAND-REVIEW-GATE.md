@@ -23,11 +23,11 @@ The gate also sits at a release boundary, so its routing logic (route to reviewe
 
 ## Decision
 
-Build a Legal/Brand Review Gate as a human-in-the-loop, fail-closed component that extends the Kill-Switch Guard primitive from `intelliflow-core` v2. Routing is deterministic rule evaluation. Approval and rejection both write to the WORM Logger. No release path bypasses the gate.
+Build a Legal/Brand Review Gate as a human-in-the-loop, fail-closed component that extends the Kill-Switch Guard primitive from `intelliflow-core`. Routing is deterministic rule evaluation. Approval and rejection both write to the WORM Logger. No release path bypasses the gate.
 
 ### Fail-closed semantics (extends Kill-Switch Guard)
 
-The Kill-Switch Guard primitive in `intelliflow-core` v2 is the canonical fail-closed enforcement primitive across IntelliFlow products. The Legal/Brand Review Gate inherits two of its properties:
+The Kill-Switch Guard primitive in `intelliflow-core` is the canonical fail-closed enforcement primitive across IntelliFlow products. The Legal/Brand Review Gate inherits two of its properties:
 
 1. **Default deny.** If any precondition for release is missing (no reviewer decision, missing citations, expired whitelist entry, kill-switch tripped at the system level), the output is blocked, not released.
 2. **Tripped state is sticky.** If the global kill-switch is tripped, the gate refuses to evaluate new requests until the kill-switch is explicitly reset by an operator. This prevents a single bad reviewer decision or a system-wide policy change from leaking copy that should be held back.

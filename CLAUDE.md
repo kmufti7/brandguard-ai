@@ -7,7 +7,7 @@ This file is the project router for Claude Code sessions on BrandGuard AI. Read 
 - **Product:** BrandGuard AI, a governed marketing AI product owned by Kaizen Works, LLC. Sole author: Kamil Mufti.
 - **Status:** Pre-MVP, paper architecture phase plus scaffolding (Session 2A complete). No agent code yet.
 - **License:** Apache 2.0, copyright 2026 Kaizen Works, LLC.
-- **Lineage:** Consumes `intelliflow-core` v2 as the upstream governance kernel via `pip install -e`. Lineage is silent in resume contexts and disclosed in README.
+- **Lineage:** Consumes `intelliflow-core` as the upstream governance kernel via `pip install -e`. Lineage is silent in resume contexts and disclosed in README.
 
 ## State Protocol (DNA §0)
 
@@ -36,7 +36,7 @@ Native:
 3. Legal/Brand Review Gate (HITL, fail-closed, extends Kill-Switch Guard; deterministic routing per DNA §8). ADR-003.
 4. Hallucination Evaluation Harness (ragas; deterministic citation check pairing per DNA §8; golden dataset 20-30 scenarios in Session 4). ADR-004.
 
-Reused governance primitives from `intelliflow-core` v2:
+Reused governance primitives from `intelliflow-core`:
 
 - WORM Logger
 - Kill-Switch Guard
