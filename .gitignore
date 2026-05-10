@@ -37,3 +37,6 @@ logs/
 
 # Local-only
 .claude/local/
+
+# Local-only artifact created in Session 7 (interview prep)
+docs/interview_talking_points.md
