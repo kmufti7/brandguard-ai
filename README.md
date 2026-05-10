@@ -56,6 +56,15 @@ TBD in Session 2.
 
 ---
 
+## How To Read The Eval Evidence
+
+Two files. The split (DJ-008) keeps committed artifacts deterministic.
+
+1. `docs/eval_report_deterministic.md`: committed; commit-stable metrics (context precision/recall, citation existence, brand voice alignment, throughput, latency). Regeneration produces byte-identical output.
+2. `eval_output/eval_report_llm.md`: gitignored; LLM-judged metrics (faithfulness, answer relevance). Regenerate on demand via `python scripts/run_eval_report.py --both`. Scores drift run-to-run.
+
+---
+
 ## License
 
 Apache License 2.0. Copyright 2026 Kaizen Works, LLC. See `LICENSE` (added in Session 2).

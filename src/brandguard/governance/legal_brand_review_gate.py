@@ -46,14 +46,46 @@ _AUTOPAY_PRICES = {
     "business": 55.00,
 }
 
-# Soft-cap and post-cap speed disclosure for SKU 4 (Unlimited+).
-# Phrases that satisfy the disclosure when paired with the word "unlimited".
+
+def _parse_unlimited_constants(
+    fact_sheet_path: Path = FACT_SHEET_PATH,
+) -> tuple[int, int]:
+    """K3: parse the soft-cap threshold (GB) and post-cap speed (Mbps) from the fact sheet.
+
+    Reads the `[fact_sheet:unlimited_plus:data]` anchor line and pulls the two
+    numbers it must declare. Fails fast on parse error rather than silently
+    falling back to defaults; a fact sheet that doesn't declare these values
+    is a real problem the gate should not paper over.
+    """
+    text = fact_sheet_path.read_text(encoding="utf-8")
+    anchor_re = re.compile(r"\[fact_sheet:unlimited_plus:data\][^\n]*", re.IGNORECASE)
+    m = anchor_re.search(text)
+    if not m:
+        raise RuntimeError(
+            "K3 parse failure: [fact_sheet:unlimited_plus:data] anchor missing "
+            f"from {fact_sheet_path}"
+        )
+    line = m.group(0)
+    cap_match = re.search(r"(\d+)\s*GB\s+high-speed\s+soft\s+cap", line, re.IGNORECASE)
+    speed_match = re.search(r"(\d+)\s*Mbps", line, re.IGNORECASE)
+    if not (cap_match and speed_match):
+        raise RuntimeError(
+            "K3 parse failure: could not extract GB cap and Mbps speed from "
+            f"unlimited_plus:data anchor: {line}"
+        )
+    return int(cap_match.group(1)), int(speed_match.group(1))
+
+
+_UNLIMITED_SOFT_CAP_GB, _UNLIMITED_POST_CAP_MBPS = _parse_unlimited_constants()
+
+# Patterns built from the parsed constants. The detector is loose about
+# whitespace ("100 GB" or "100GB") and case-insensitive.
 _UNLIMITED_DISCLOSURE_PATTERNS = [
-    re.compile(r"100\s*GB", re.IGNORECASE),
+    re.compile(rf"{_UNLIMITED_SOFT_CAP_GB}\s*GB", re.IGNORECASE),
     re.compile(r"soft\s*cap", re.IGNORECASE),
 ]
 _UNLIMITED_POSTCAP_PATTERNS = [
-    re.compile(r"5\s*Mbps", re.IGNORECASE),
+    re.compile(rf"{_UNLIMITED_POST_CAP_MBPS}\s*Mbps", re.IGNORECASE),
 ]
 
 
@@ -157,6 +189,7 @@ def _check_unlimited_disclosure(copy_text: str, decision: GateDecision) -> None:
     if not (has_softcap and has_postcap):
         decision.failed_rules.append("unlimited_disclosure")
         decision.reasons.append(
-            "Copy uses the word 'unlimited' without disclosing both the 100 GB soft cap "
-            "and the 5 Mbps post-cap speed in the same passage."
+            f"Copy uses the word 'unlimited' without disclosing both the "
+            f"{_UNLIMITED_SOFT_CAP_GB} GB soft cap and the "
+            f"{_UNLIMITED_POST_CAP_MBPS} Mbps post-cap speed in the same passage."
         )

@@ -457,68 +457,258 @@ Session 2A.1 Log, Session 4.1 Log, this Session 4.2 Log. Backfilled 2026-05-09 f
 ---
 
 ## DJ-010: Pre-pass discipline for Claude Chat drafts going to CC
+
 Date: 2026-05-09
 Session: 4.2
 Status: Decided
 Owner: Kamil
 
 ### The Question
+
 Session 4.2 surfaced a hard contradiction in the CC command Claude Chat drafted. "Commit verbatim" combined with "no em dashes anywhere" and a 0-hit em dash grep verification step. The drafted DJ entries contained 12 em dashes. CC absorbed the cost of resolving it under pressure. Flag, choose reality (em dash ban), substitute, document. CC handled it well. Should the contradiction have reached CC at all?
 
 ### Options Considered
+
 - A. Accept that Claude Chat drafts will sometimes contradict project rules. Rely on CC's P20 discipline to catch them at commit time.
 - B. Codify a pre-pass discipline. Every Claude Chat-drafted text destined for CC commit must pre-pass the project's Doc QC verifier rules (banned phrases, em dashes, citation format) before being issued in the CC command.
 - C. Build a verifier-in-chat tool that Claude Chat runs on its own drafts before sending.
 
 ### Decision
+
 B. P25 codified. Claude Chat pre-passes drafts through the same rules CC will verify. CC remains the second-pass guard. Confidence: High.
 
 ### Why This Choice
+
 The Doc QC pipeline (DJ-007) exists to keep documentation honest. Claude Chat is one of the authors. Authors that do not self-audit before submission burn CC's review budget on noise. The 12 em dashes in Session 4.2 cost CC time and forced an under-pressure P20 call. Pre-passing in chat catches them in the draft, where revision is cheap.
 
 ### What This Forecloses
+
 Slight friction. Claude Chat has to grep its own outputs before issuing CC commands. Mitigated. It is a constant-time check, not a creative bottleneck.
 
 ### Downstream Implications
+
 P25 explicit in Context v1.10. Future CC commands from Claude Chat that include verbatim text include a pre-pass step in the chat reasoning. When Session 5A pipeline is built, the same banned phrase list serves as the pre-pass check for chat drafts.
 
 ### Interview Framing
+
 Mistake caught. Drafted DJ entries in chat using em dashes while the project bans them. CC flagged it via P20 (always flag, never silent fix), substituted 12 em dashes with equivalent punctuation, documented every swap in the session log. Codified the lesson. Claude Chat now self-audits text drafts against the project's banned-phrase and punctuation rules before sending them to CC for commit. Better hygiene. Same discipline as the Doc QC pipeline.
 
 ### Related
+
 DJ-007 (Doc QC pipeline), P20, P21, Session 4.2 Log.
 
 ---
 
 ## DJ-011: Scaling priorities for the agentic workflow
+
 Date: 2026-05-09
 Session: 5A (decided post-Session 4.1 timing data)
 Status: Decided
 Owner: Kamil
 
 ### The Question
+
 The Session 4.1 timing data shows 9.5 scenarios/minute throughput in single-user serial mode. RAG copy generation takes 75% of per-scenario latency, audience discovery 25%, the deterministic gate 0.03%. If this needed to scale to production, in what order should the bottlenecks be addressed, and what does each step trade?
 
 ### Options Considered
+
 - A. Vertical scaling. Faster model (Sonnet over Haiku) plus larger embedding model.
 - B. Parallelization across scenarios. Run N scenarios concurrently against the LLM and the FAISS index.
 - C. LLM-call batching. Batch the prompts of multiple scenarios into single API calls.
 - D. Embedding and retrieval caching. Cache FAISS results for repeated audience queries.
 
 ### Decision
+
 B then C then D. Vertical (A) is rejected as the first move because it trades cost for latency without addressing the architectural bottleneck. Confidence: High.
 
 ### Why This Choice
+
 The data tells the order. RAG copy generation is one async LLM call per scenario. Scenarios are independent. Parallelization is the cleanest unlock. Batching gives the next compression but adds complexity in error handling per scenario. Caching helps only when queries repeat, which is a usage-pattern question that comes after architectural scale. Vertical scaling (bigger model) trades latency for cost and only matters once parallelization is saturated.
 
 ### What This Forecloses
+
 Parallelization assumes scenarios are independent. If future work introduces cross-scenario state (e.g., personalization based on prior outputs in the same session), serial is forced again. Batching also assumes the LLM API supports prompt batching efficiently. Current Anthropic API does, but rate limits become the new bottleneck.
 
 ### Downstream Implications
+
 B6 (Token FinOps Tracker integration) becomes more relevant because parallelization changes the cost-per-scenario calculation. The eval harness will need a parallel runner mode in Session 5A or 5B. The gate's sub-millisecond performance does not change at scale. It remains negligible.
 
 ### Interview Framing
+
 The data says where to spend time. RAG copy generation is 75% of per-scenario latency. Scenarios are independent. So parallelization comes first. Batching second, when the API supports it cleanly. Caching third, because it only matters if queries repeat. Vertical scaling (bigger model) is not the first move because it trades cost for latency without fixing the architecture. Gate is sub-millisecond. Stays sub-millisecond.
 
 ### Related
+
 DJ-002 (deterministic gate validated at scale by sub-ms timing), Session 4.1 latency data, backlog B6 (Token FinOps). Decided 2026-05-09 based on Session 4.1 numbers.
+
+---
+
+## DJ-012: WORM logger reuse with session-id prefix for doc pipeline
+
+Date: 2026-05-10
+Session: 5A
+Status: Decided
+Owner: Kamil
+
+### The Question
+
+The doc QC pipeline needs an audit trail of state transitions (DRAFTED, CRITIQUED, REVISED, VERIFIED, FAILED). Three architectural options were on the table for where this trail lives. Each one carries different operational and auditability properties. The pipeline log should be tamper-evident and verifiable, but the doc pipeline is a separate concern from the runtime workflow.
+
+### Options Considered
+
+- A. Separate WORM database file per pipeline. One SQLite file for the runtime workflow, another for the doc pipeline. Clean separation; two chains to verify.
+- B. Reuse the runtime WORM logger; segment chains by trace_id prefix. One SQLite file, one chain, every trace_id starts with a prefix that identifies which subsystem produced it (runtime workflow vs doc pipeline).
+- C. Build a new audit log abstraction shared by both pipelines. Cleanest architecturally; most work.
+
+### Decision
+
+B. Single WORM database. trace_id prefix segments the chain: runtime workflow uses bare UUIDs; doc pipeline uses `doc_pipeline:<doc_slug>:<run_uuid>`. Verifier of either subsystem reads its slice by prefix filter. Confidence: High.
+
+### Why This Choice
+
+The HMAC-SHA256 hash chain in the WORM logger is the audit defense; splitting the database into two files would create two chains that have to be verified independently, doubling the operational surface. A single chain with trace_id prefix segmentation preserves end-to-end verifiability across the project. The DJ-007 architectural note already anticipated this design; this entry codifies it. Reusing the existing WORMLogRepository class avoids inventing a parallel abstraction whose maintenance would compete with the one already in production use.
+
+### What This Forecloses
+
+A bad doc pipeline write could in theory bloat the runtime workflow's chain or compete on the SQLite write lock. The risk is low because doc pipeline writes are infrequent (one per state transition, not per token), but the failure mode exists and is documented here so future ops work knows the dependency. Hard-separated chains would have isolated this surface; we accepted the trade-off for simpler verification.
+
+### Downstream Implications
+
+Session 5A orchestrator writes to the same WORM DB as run_workflow. The verify_chain() call in run_e2e_sample.py validates the entire chain including any doc pipeline transitions present. If the doc pipeline scales to dozens of docs per run, we may need to revisit option A.
+
+### Interview Framing
+
+The doc pipeline state transitions write to the same WORM logger as the runtime workflow. Same HMAC-SHA256 chain, append-only SQLite triggers, one file. Trace IDs are prefixed to segment the chain by subsystem: `doc_pipeline:product_overview:UUID` versus a bare UUID for runtime runs. One chain to verify end-to-end. Future scaling may force a split, but that day is not today.
+
+### Related
+
+DJ-007 (Doc QC pipeline), src/brandguard/workflow.py, scripts/doc_pipeline/orchestrator.py, intelliflow_core WORMLogRepository.
+
+---
+
+## DJ-013: Critic rubric structure (base + doc-specific extensions)
+
+Date: 2026-05-10
+Session: 5A
+Status: Decided
+Owner: Kamil
+
+### The Question
+
+The doc QC pipeline scores each doc on multiple dimensions. PRODUCT_OVERVIEW has different concerns than a PDR or a Decision Journal entry. Should every doc share one rubric with optional dimensions, should each doc have its own bespoke rubric, or should rubrics inherit from a base?
+
+### Options Considered
+
+- A. Single shared rubric with all possible dimensions; some dimensions ignored per doc type. Simple file structure; rubric file becomes a kitchen sink.
+- B. Bespoke per-doc rubric, no inheritance. Each rubric is self-contained. Rubric drift across doc types becomes likely.
+- C. Base rubric (Specificity, Evidence Trail, Honest Scope, Voice) plus doc-specific extensions (Business Framing for PRODUCT_OVERVIEW, Counter-Thesis Honesty for PDR, etc.). Inheritance discipline; small files.
+
+### Decision
+
+C. base.rubric.md plus extensions per doc type (product_overview, user_personas, pdr, dj, readme). Pass floor 7 on every dimension. Confidence: High.
+
+### Why This Choice
+
+The four base dimensions (Specificity, Evidence Trail, Honest Scope, Voice) apply to every documentation artifact in the project. Adding them to every rubric by inheritance is cheaper than copying them and keeps the grading bar consistent across doc types. Doc-specific dimensions live alongside the base in a small extension file. The Critic loads the merged rubric at call time. Total surface area stays small; six rubric files cover thirteen briefs.
+
+### What This Forecloses
+
+A rubric that needs to override a base dimension (e.g., relax Voice for a contributor-facing CONTRIBUTING.md) requires explicit prose in the extension. The current setup does not support inheritance overrides cleanly. If override becomes common, the Critic prompt assembly may need a more formal merge step. For Session 5A the simple concatenation is sufficient.
+
+### Downstream Implications
+
+The five doc-specific rubrics created in Session 5A (product_overview, user_personas, pdr, dj, readme) cover the docs that warrant grading distinctions. Remaining doc types (use_cases, success_metrics, roadmap, integration_surface, mlops_playbook, architecture, usage, contributing, data_changelog) use the base rubric only. Session 5B may add extensions as it generates docs and notices weakness in the base scoring.
+
+### Interview Framing
+
+Rubrics inherit. Four base dimensions every doc gets graded on: specificity, evidence trail, honest scope, voice. Each doc type adds two or three dimensions of its own: a product overview gets business framing and competitive positioning specificity, a PDR gets counter-thesis honesty and foreclosed-paths visibility, a Decision Journal entry gets falsifiable thesis and buzzword-free interview framing. Pass floor seven out of ten on every dimension. Below seven anywhere triggers a revision cycle.
+
+### Related
+
+docs/_qc/rubrics/, scripts/doc_pipeline/critic_agent.py, DJ-007 (pipeline), P22 (LLM judgment is rubric-bounded here).
+
+---
+
+## DJ-014: Plugin-vs-encoded Author modes (pmprompt fallback)
+
+Date: 2026-05-10
+Session: 5A
+Status: Decided
+Owner: Kamil
+
+### The Question
+
+Two PM plugins were planned for Session 5A's Author Agent: the Anthropic product-management plugin (write-spec, roadmap-update, etc.) and the pmprompt plugin (prd-writer, jobs-to-be-done, working-backwards, etc.). The pmprompt plugin is blocked on an upstream manifest conflict surfaced during plugin setup. Should we wait for the upstream fix, encode pmprompt's frameworks inline, or run with the Anthropic plugin only?
+
+### Options Considered
+
+- A. Wait. Open issue or PR upstream on pmprompt/claude-plugin-product-management. Session 5A blocked until fixed.
+- B. Encode the affected frameworks (jobs-to-be-done, working-backwards) inline in the Author Agent's brief schema. Author Agent supports two modes: plugin (load the Anthropic skill behavior into the system prompt) and encoded (load a named framework definition inline).
+- C. Skip the pmprompt frameworks entirely. user_personas.md becomes "audience description" without JTBD discipline. README opens without Working Backwards framing.
+
+### Decision
+
+B. Dual-mode Author Agent. Brief frontmatter `mode: plugin` invokes a named Anthropic plugin skill (system prompt mirrors the documented skill behavior). Brief frontmatter `mode: encoded` loads a named framework text inline (JTBD, Working Backwards, Shape Up). Confidence: High.
+
+### Why This Choice
+
+The pmprompt manifest conflict is an upstream issue with no committed timeline. Blocking on it would delay Session 5A indefinitely. Encoding the frameworks inline costs no LLM quality (Claude knows JTBD and Working Backwards from training; the framework text is a focusing prompt, not novel content). Dual-mode also gives the pipeline portability: if a third plugin becomes relevant later, the Author Agent already supports plugin mode; if a new framework needs encoding, it slots into the encoded-framework dictionary.
+
+### What This Forecloses
+
+The encoded frameworks are not authoritative reproductions of the pmprompt skills. The Author's behavior is approximate, not exact. A reviewer comparing the output to pmprompt's actual skill output may notice deviation. We accept this because the alternative (no JTBD personas, no Working Backwards README) is worse. Session 5B may revisit if pmprompt's manifest conflict gets resolved.
+
+### Downstream Implications
+
+Session 5A pipeline ships with plugin mode (product_overview, success_metrics, roadmap use Anthropic plugin) and encoded mode (user_personas via JTBD, README via Working Backwards, others via project-specific prompts). Backlog item B22 tracks the pmprompt retry. The Author Agent's `_ENCODED_FRAMEWORKS` dictionary is a living artifact; adding a framework is one entry.
+
+### Interview Framing
+
+Two plugins on the table for Session 5A. The Anthropic product-management plugin installed clean. The pmprompt plugin loaded with an upstream manifest conflict. Rather than block, I built dual-mode support in the Author Agent. Plugin mode invokes the Anthropic skill. Encoded mode loads the framework definition inline (JTBD, Working Backwards). Pipeline runs either way. When pmprompt fixes the manifest, encoded mode becomes optional, not required.
+
+### Related
+
+Plugin setup status report, scripts/doc_pipeline/author_agent.py, backlog B22, DJ-007 (pipeline).
+
+---
+
+## DJ-015: Banned phrase list governance (living artifact)
+
+Date: 2026-05-10
+Session: 5A
+Status: Decided
+Owner: Kamil
+
+### The Question
+
+The doc QC verifier blocks any doc containing any phrase from `scripts/doc_pipeline/banned_phrases.txt`. The list shipped Session 5A with 15 phrases (see the file for the full list). New generic noise will surface as docs get generated. How does the list evolve, who is empowered to add phrases, and what is the change-control trail?
+
+### Options Considered
+
+- A. Frozen list. Session 5A's 15 phrases are the final set. New noise survives.
+- B. Anyone can add or remove. Edit the file, commit. Fast; loose change control.
+- C. Add phrases via DJ entry referencing the new phrase and why it should be banned. Removal also via DJ entry. The list itself is governed by the same Decision Journal that governs every other architectural call.
+
+### Decision
+
+C. Banned phrase list is a living artifact governed by DJ entries (backlog B13). Each addition requires a DJ entry naming the phrase, an example of the doc-text it appeared in, and the reason it counts as generic noise. Removal follows the same path. Confidence: High.
+
+### Why This Choice
+
+The banned phrase list is upstream of every doc that ships. Loose change control (option B) means a maintainer's pet peeve becomes a project-wide block without scrutiny. A frozen list (option A) means the bar erodes over time as the LLM finds new ways to be generic. Governing the list through DJ entries makes additions visible, justified, and reversible. It also creates an audit trail: every banned phrase has a paper trail explaining why it counts as failure.
+
+### What This Forecloses
+
+Adding a phrase costs more than editing a text file. A Decision Journal entry is the bar. Quick experimental additions are harder. We accept this because the list is a shared semantic bar across the project, not a personal style preference. A reviewer should be able to read the DJ entry and agree the phrase belongs in the list.
+
+### Downstream Implications
+
+B13 (Banned phrase list extensions) is the standing backlog ticket for this work. The first time a doc pipeline run reveals a generic noise phrase not in the list, a DJ entry is drafted, reviewed, committed, and the phrase added. The doc pipeline retroactively re-verifies any pending docs against the new list.
+
+### Interview Framing
+
+The banned phrase list is the verifier's grep dictionary. Fifteen phrases shipped Session 5A. Adding or removing a phrase requires a Decision Journal entry that names the phrase, gives an example of where it appeared, and explains why it counts as generic noise. Same change-control discipline as any other architectural call. The list is a living artifact, not a one-time configuration.
+
+### Related
+
+scripts/doc_pipeline/banned_phrases.txt, scripts/doc_pipeline/verifier.py, backlog B13, DJ-007 (pipeline).

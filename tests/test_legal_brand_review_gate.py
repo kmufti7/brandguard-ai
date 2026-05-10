@@ -6,7 +6,20 @@ and unlimited disclosure (O2). Every block is reproducible and pinned to a rule_
 
 from __future__ import annotations
 
-from brandguard.governance.legal_brand_review_gate import review
+from brandguard.governance.legal_brand_review_gate import (
+    _UNLIMITED_POST_CAP_MBPS,
+    _UNLIMITED_SOFT_CAP_GB,
+    review,
+)
+
+
+def test_parsed_constants_match_fact_sheet():
+    """K3: soft-cap (GB) and post-cap speed (Mbps) parsed from fact sheet.
+
+    The values must match the [fact_sheet:unlimited_plus:data] anchor.
+    """
+    assert _UNLIMITED_SOFT_CAP_GB == 100
+    assert _UNLIMITED_POST_CAP_MBPS == 5
 
 
 def test_gate_blocks_on_hallucinated_anchor():

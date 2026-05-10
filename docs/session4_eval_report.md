@@ -1,5 +1,7 @@
 # BrandGuard AI: Session 4 Eval Report
 
+> **Historical artifact.** This is the Session 4 combined report. As of Session 5A (Q1 split per DJ-008), eval evidence lives in two files: `docs/eval_report_deterministic.md` (committed, commit-stable metrics) and `eval_output/eval_report_llm.md` (gitignored, LLM-judged metrics that drift with model variance). This file is preserved as the historical record of the Session 4 run.
+
 Output of `scripts/run_eval_report.py` against the full golden dataset (20 scenarios). Scores recomputed live against the real Anthropic API; deterministic metrics will be byte-identical across runs.
 
 **Generated:** `2026-05-10T17:53:00.652980+00:00`

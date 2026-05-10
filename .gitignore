@@ -40,3 +40,14 @@ logs/
 
 # Local-only artifact created in Session 7 (interview prep)
 docs/interview_talking_points.md
+
+# Q1 split (DJ-008): LLM-judged eval reports regenerate on demand and drift
+# run-to-run; never commit them.
+eval_output/
+
+# WORM logger SQLite files are runtime artifacts (HMAC-SHA256 hash chain
+# regenerates per run). The verifiable WORM is the chain in memory + sidecar,
+# not the on-disk DB.
+brandguard_worm*.db
+brandguard_worm*.db-wal
+brandguard_worm*.db-shm
