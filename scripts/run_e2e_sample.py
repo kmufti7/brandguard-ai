@@ -1,7 +1,8 @@
 """Run a live end-to-end pass and write the result to docs/session3_e2e_sample.md.
 
 This script makes real Anthropic API calls. It is the source of truth for the
-Session 3 sample artifact. To regenerate:
+Session 3 e2e artifact (and is re-run during Session 4 to refresh the WORM
+chain integrity check, K2). To regenerate:
 
     source .venv/bin/activate
     ANTHROPIC_API_KEY=... python scripts/run_e2e_sample.py
@@ -10,6 +11,7 @@ Session 3 sample artifact. To regenerate:
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from brandguard.workflow import WorkflowDeps, cleanup_worm_db, run_workflow
@@ -116,9 +118,32 @@ def main() -> None:
         )
     lines.append("")
 
+    # K2: verify_chain() integrity check on the WORM repository.
+    worm_repo = result.get("worm_repo")
+    db = result.get("_db")
+    chain_ok = worm_repo.verify_chain() if worm_repo is not None else None
+    chain_check_ts = datetime.now(timezone.utc).isoformat()
+    if db is not None:
+        db.close()
+
+    lines.append("## WORM Chain Integrity (K2)\n")
+    lines.append(f"- **`verify_chain()` result:** `{chain_ok}`")
+    lines.append(f"- **Entry count:** {len(chain)}")
+    lines.append(f"- **Verified at:** `{chain_check_ts}`")
+    lines.append("")
+    lines.append(
+        "The WORM repository's HMAC-SHA256 hash chain is recomputed end-to-end. "
+        "A `True` result confirms (a) every `prev_hash` matches the previous entry's "
+        "`entry_hash` and (b) every `entry_hash` matches a fresh recomputation. "
+        "SQLite triggers physically reject UPDATE/DELETE, so tamper-evidence is "
+        "enforced at the storage layer in addition to the application-layer check."
+    )
+    lines.append("")
+
     DOCS_PATH.parent.mkdir(parents=True, exist_ok=True)
     DOCS_PATH.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {DOCS_PATH.relative_to(Path.cwd())}")
+    print(f"verify_chain(): {chain_ok}")
     cleanup_worm_db(DB_PATH)
 
 

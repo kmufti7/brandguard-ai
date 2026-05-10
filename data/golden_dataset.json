@@ -1,0 +1,313 @@
+[
+  {
+    "id": "G001",
+    "audience_query": "Strand Essentials customers in Texas with low monthly data usage who could benefit from staying on the cheapest plan.",
+    "expected_filter": {
+      "state": ["TX"],
+      "sku": ["Essentials"]
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:essentials:price]",
+      "[fact_sheet:essentials:data]",
+      "[fact_sheet:essentials:eligibility]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Single-line entry SKU; ALLOW path with autopay disclosure required."
+  },
+  {
+    "id": "G002",
+    "audience_query": "Strand Pro customers in California with autopay enrolled.",
+    "expected_filter": {
+      "state": ["CA"],
+      "sku": ["Pro"],
+      "autopay_enrolled": true
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:pro:price]",
+      "[fact_sheet:pro:data]",
+      "[fact_sheet:pro:eligibility]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Mid-tier SKU happy path; pricing must include with-autopay disclosure."
+  },
+  {
+    "id": "G003",
+    "audience_query": "Strand Family households with three or more lines in New York.",
+    "expected_filter": {
+      "state": ["NY"],
+      "sku": ["Family"],
+      "household_size_min": 3
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:family:price]",
+      "[fact_sheet:family:data]",
+      "[fact_sheet:family:eligibility]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Multi-line family SKU; copy should mention pooled data."
+  },
+  {
+    "id": "G004",
+    "audience_query": "Strand Unlimited+ customers who use international data.",
+    "expected_filter": {
+      "sku": ["Unlimited+"],
+      "international_usage": true
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:unlimited_plus:price]",
+      "[fact_sheet:unlimited_plus:data]",
+      "[fact_sheet:unlimited_plus:international]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Unlimited+ SKU; ALLOW requires 100 GB soft cap and 5 Mbps post-cap disclosure paired with the word 'unlimited'."
+  },
+  {
+    "id": "G005",
+    "audience_query": "Strand Business accounts in Texas with international usage.",
+    "expected_filter": {
+      "state": ["TX"],
+      "sku": ["Business"],
+      "international_usage": true
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:business:price]",
+      "[fact_sheet:business:data]",
+      "[fact_sheet:business:international]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Business SKU happy path; tests business + international segmentation."
+  },
+  {
+    "id": "G006",
+    "audience_query": "High churn risk customers in California across any plan.",
+    "expected_filter": {
+      "state": ["CA"],
+      "churn_risk": ["high"]
+    },
+    "expected_anchor_pool": [
+      "[brand_voice:§4]",
+      "[fact_sheet:pro:price]",
+      "[fact_sheet:essentials:price]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Retention scenario (O1-enabled); copy targets at-risk customers with a renewal nudge."
+  },
+  {
+    "id": "G007",
+    "audience_query": "Customers with high churn risk who are not on autopay across all plans.",
+    "expected_filter": {
+      "churn_risk": ["high"],
+      "autopay_enrolled": false
+    },
+    "expected_anchor_pool": [
+      "[brand_voice:§4]",
+      "[fact_sheet:pro:restrictions]",
+      "[fact_sheet:essentials:restrictions]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Retention + autopay-incentive scenario; copy should propose enrolling in autopay for the discounted rate."
+  },
+  {
+    "id": "G008",
+    "audience_query": "Recently contacted customers (last 30 days) on Strand Pro.",
+    "expected_filter": {
+      "sku": ["Pro"],
+      "last_support_within_days": 30
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:pro:price]",
+      "[fact_sheet:pro:data]",
+      "[brand_voice:§4]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Service-recovery retention scenario; reaches customers who recently contacted support."
+  },
+  {
+    "id": "G009",
+    "audience_query": "Strand Family households in Florida with five or more lines.",
+    "expected_filter": {
+      "state": ["FL"],
+      "sku": ["Family"],
+      "household_size_min": 5
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:family:price]",
+      "[fact_sheet:family:hotspot]",
+      "[fact_sheet:family:streaming]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Edge segmentation: large household within state; tests household_size_min predicate."
+  },
+  {
+    "id": "G010",
+    "audience_query": "Hotspot-using customers across Pro and Unlimited+ in California.",
+    "expected_filter": {
+      "state": ["CA"],
+      "sku": ["Pro", "Unlimited+"],
+      "hotspot_usage": true
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:pro:hotspot]",
+      "[fact_sheet:unlimited_plus:hotspot]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Multi-SKU segmentation; tests OR semantics across two SKUs."
+  },
+  {
+    "id": "G011",
+    "audience_query": "Customers in California with monthly data usage above 60 GB.",
+    "expected_filter": {
+      "state": ["CA"],
+      "monthly_data_gb_min": 60
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:unlimited_plus:data]",
+      "[fact_sheet:unlimited_plus:price]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Heavy-data segmentation; expects upsell to Unlimited+ with full disclosure."
+  },
+  {
+    "id": "G012",
+    "audience_query": "New customers in Pennsylvania with tenure under 6 months.",
+    "expected_filter": {
+      "state": ["PA"],
+      "tenure_max_months": 6
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:essentials:price]",
+      "[brand_voice:§4]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Onboarding scenario for new customers; tests tenure_max predicate."
+  },
+  {
+    "id": "G013",
+    "audience_query": "Strand Business customers in California with at least 12 months of tenure who use international data.",
+    "expected_filter": {
+      "state": ["CA"],
+      "sku": ["Business"],
+      "tenure_min_months": 12,
+      "international_usage": true
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:business:price]",
+      "[fact_sheet:business:international]",
+      "[fact_sheet:business:eligibility]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Edge segmentation: business + international with tenure floor."
+  },
+  {
+    "id": "G014",
+    "audience_query": "Online-acquired customers in Texas across all plans.",
+    "expected_filter": {
+      "state": ["TX"],
+      "acquisition_channel": ["online"]
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:pro:price]",
+      "[fact_sheet:essentials:price]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Channel attribution scenario; tests acquisition_channel predicate."
+  },
+  {
+    "id": "G015",
+    "audience_query": "Customers between 25 and 44 in California on Strand Pro.",
+    "expected_filter": {
+      "state": ["CA"],
+      "sku": ["Pro"],
+      "age_bracket": ["25-34", "35-44"]
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:pro:price]",
+      "[fact_sheet:pro:data]",
+      "[fact_sheet:pro:streaming]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Demographic segmentation; tests age_bracket multi-value predicate."
+  },
+  {
+    "id": "G016",
+    "audience_query": "Strand Pro customers in California eligible for renewal.",
+    "expected_filter": {
+      "state": ["CA"],
+      "sku": ["Pro"]
+    },
+    "expected_anchor_pool": ["[fact_sheet:pro:price]"],
+    "expected_gate_decision": "BLOCK",
+    "expected_failed_rules": ["citation_existence"],
+    "notes": "BLOCK case: tests scenario configured to emit a hallucinated anchor; the gate must catch it.",
+    "injected_copy": "COPY:\nStrand Pro is $45 per line per month with autopay. Renew today. [fact_sheet:fake_sku:price]\n\nCITATIONS:\n- [fact_sheet:fake_sku:price]\n"
+  },
+  {
+    "id": "G017",
+    "audience_query": "Strand Pro customers in California, promotional pricing.",
+    "expected_filter": {
+      "state": ["CA"],
+      "sku": ["Pro"]
+    },
+    "expected_anchor_pool": ["[fact_sheet:pro:price]"],
+    "expected_gate_decision": "BLOCK",
+    "expected_failed_rules": ["autopay_disclosure"],
+    "notes": "BLOCK case: $45 quoted without autopay disclosure must be blocked by the autopay rule.",
+    "injected_copy": "COPY:\nStrand Pro is just $45 a month. Get it today. [fact_sheet:pro:price]\n\nCITATIONS:\n- [fact_sheet:pro:price]\n"
+  },
+  {
+    "id": "G018",
+    "audience_query": "Strand Unlimited+ customers, headline messaging.",
+    "expected_filter": {
+      "sku": ["Unlimited+"]
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:unlimited_plus:price]",
+      "[fact_sheet:unlimited_plus:data]"
+    ],
+    "expected_gate_decision": "BLOCK",
+    "expected_failed_rules": ["unlimited_disclosure"],
+    "notes": "BLOCK case: 'unlimited' without 100 GB soft cap and 5 Mbps post-cap must be blocked.",
+    "injected_copy": "COPY:\nStrand Unlimited+ gives you unlimited data with autopay for $70 a month. [fact_sheet:unlimited_plus:price]\n\nCITATIONS:\n- [fact_sheet:unlimited_plus:price]\n"
+  },
+  {
+    "id": "G019",
+    "audience_query": "",
+    "expected_filter": {},
+    "expected_anchor_pool": [],
+    "expected_gate_decision": "BLOCK",
+    "expected_failed_rules": ["audience_query_required"],
+    "notes": "BLOCK case: empty audience query trips the default kill switch (K1)."
+  },
+  {
+    "id": "G020",
+    "audience_query": "Strand Business accounts on retail acquisition channel with high data usage.",
+    "expected_filter": {
+      "sku": ["Business"],
+      "acquisition_channel": ["retail"],
+      "monthly_data_gb_min": 30
+    },
+    "expected_anchor_pool": [
+      "[fact_sheet:business:price]",
+      "[fact_sheet:business:data]",
+      "[fact_sheet:business:hotspot]"
+    ],
+    "expected_gate_decision": "ALLOW",
+    "expected_failed_rules": [],
+    "notes": "Edge segmentation: business + retail-channel + heavy data; tests three-predicate intersection."
+  }
+]

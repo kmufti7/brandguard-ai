@@ -130,7 +130,13 @@ def derive_churn_risk(
     sku: str,
     autopay_enrolled: bool,
 ) -> str:
-    """Heuristic churn risk: short tenure, recent support contact, low usage, no autopay raise risk."""
+    """Heuristic churn risk: short tenure, recent support contact, low usage, no autopay raise risk.
+
+    Thresholds (Session 4 / O1 retune): high >= 3, medium >= 1, else low.
+    The original Session 2B thresholds (high >= 4, medium >= 2) skewed too low
+    on this synthetic corpus, producing only 2 high-risk records out of 500 and
+    leaving retention scenarios untestable in the golden dataset.
+    """
     score = 0
     if tenure_months < 6:
         score += 2
@@ -152,10 +158,10 @@ def derive_churn_risk(
     if monthly_data_gb < sku_typical_usage[sku] * 0.30:
         score += 1
     if not autopay_enrolled:
-        score += 1
-    if score >= 4:
+        score += 2  # autopay non-enrollment is a strong real-world churn signal
+    if score >= 3:
         return "high"
-    if score >= 2:
+    if score >= 1:
         return "medium"
     return "low"
 

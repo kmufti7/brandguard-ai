@@ -12,9 +12,13 @@ Cross-cutting concerns:
     verifiable end-to-end.
 
   * Kill-Switch Guard from intelliflow-core is checked on entry to every
-    node. Failure raises KillSwitchTriggered, which terminates the
-    workflow. Default rule set is empty (no global blockers). Callers
-    register additional rules via add_rule() before run().
+    node. The default guard registers one conservative rule:
+    `audience_query_required`. Callers can override `WorkflowDeps.kill_switch`
+    to disarm the default or add stricter rules. When the switch trips,
+    `run_workflow` catches `KillSwitchTriggered`, writes a
+    `KILL_SWITCH_TRIGGERED` event to WORM with the failed rule IDs, then a
+    final `WORKFLOW_END`, and returns a structured result with
+    `kill_switch_triggered=True` instead of propagating the exception.
 
 The workflow is deterministic in its routing: nodes always execute in
 order, and the gate decision is always written to WORM regardless of
@@ -27,7 +31,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from intelliflow_core.v2.runtime.contracts import GovernanceRule
+from intelliflow_core.v2.runtime.exceptions import KillSwitchTriggered
 from intelliflow_core.v2.runtime.kill_switch import KillSwitchGuard
+from intelliflow_core.v2.runtime.state import IntelliFlowState
 from intelliflow_core.v2.storage.db import DatabaseSessionManager
 from intelliflow_core.v2.storage.worm_logger import WORMLogRepository
 from langgraph.graph import END, StateGraph
@@ -45,13 +52,37 @@ from brandguard.state import BrandGuardState
 
 @dataclass
 class WorkflowDeps:
-    """Injectable dependencies. Tests can swap LLM, corpus, or storage."""
+    """Injectable dependencies. Tests can swap LLM, corpus, or storage.
+
+    `kill_switch` defaults to None; if left None, `run_workflow` installs the
+    default guard via `default_kill_switch()`. Pass `kill_switch=KillSwitchGuard()`
+    explicitly (with no rules) to disarm it.
+    """
 
     llm: LLMCall | None = None
     corpus: list[dict[str, Any]] | None = None
     faiss_index: Any | None = None
     worm_db_path: str = "brandguard_worm.db"
     kill_switch: KillSwitchGuard | None = None
+
+
+def _audience_query_present(state: IntelliFlowState) -> bool:
+    """Default kill-switch rule: audience_query must be a non-empty, non-whitespace string."""
+    query = getattr(state, "audience_query", None)
+    return isinstance(query, str) and bool(query.strip())
+
+
+def default_kill_switch() -> KillSwitchGuard:
+    """The default armed guard. One conservative rule: non-empty audience query."""
+    guard = KillSwitchGuard(name="brandguard_default_kill_switch")
+    guard.add_rule(
+        GovernanceRule(
+            rule_id="audience_query_required",
+            description="Audience query must be a non-empty, non-whitespace string.",
+            logic=_audience_query_present,
+        )
+    )
+    return guard
 
 
 def _audience_summary(matched: list[dict[str, Any]]) -> str:
@@ -208,20 +239,62 @@ def run_workflow(
     campaign_brief: str,
     deps: WorkflowDeps | None = None,
 ) -> dict[str, Any]:
-    """One-shot entry point. Compiles the graph, runs it, returns final state + WORM chain."""
+    """One-shot entry point. Compiles the graph, runs it, returns final state + WORM chain.
+
+    The default kill-switch is installed automatically when `deps.kill_switch` is None.
+    On a tripped switch, the function catches `KillSwitchTriggered`, writes a
+    `KILL_SWITCH_TRIGGERED` event to WORM, then a final `WORKFLOW_END`, and returns
+    a structured result with `kill_switch_triggered=True` and `final_state=None`.
+    """
+    if deps is None:
+        deps = WorkflowDeps()
+    if deps.kill_switch is None:
+        deps.kill_switch = default_kill_switch()
+
     compiled, worm, db = build_workflow(deps)
     initial = BrandGuardState(
         audience_query=audience_query, campaign_brief=campaign_brief
     )
     worm.log_event(initial.trace_id, "WORKFLOW_START", {"trace_id": initial.trace_id})
-    final = compiled.invoke(initial)
+
+    try:
+        final = compiled.invoke(initial)
+    except KillSwitchTriggered as ks:
+        failed_rule_ids = [r.rule_id for r in ks.failed_rules]
+        failed_descriptions = [r.description for r in ks.failed_rules]
+        worm.log_event(
+            initial.trace_id,
+            "KILL_SWITCH_TRIGGERED",
+            {
+                "failed_rules": failed_rule_ids,
+                "reasons": failed_descriptions,
+            },
+        )
+        worm.log_event(
+            initial.trace_id,
+            "WORKFLOW_END",
+            {"trace_id": initial.trace_id, "status": "kill_switch"},
+        )
+        chain = worm.get_chain()
+        db.close()
+        return {
+            "final_state": None,
+            "trace_id": initial.trace_id,
+            "worm_chain": chain,
+            "kill_switch_triggered": True,
+            "failed_rules": failed_rule_ids,
+            "worm_repo": None,
+        }
+
     worm.log_event(initial.trace_id, "WORKFLOW_END", {"trace_id": initial.trace_id})
     chain = worm.get_chain()
-    db.close()
     return {
         "final_state": final,
         "trace_id": initial.trace_id,
         "worm_chain": chain,
+        "kill_switch_triggered": False,
+        "worm_repo": worm,
+        "_db": db,
     }
 
 
