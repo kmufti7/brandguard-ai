@@ -29,7 +29,7 @@ Five traits, in priority order:
 
 ## §4. Voice Principles
 
-Seven rules. These are the operational instructions the RAG copy generator should treat as defaults.
+Eight rules. These are the operational instructions the RAG copy generator should treat as defaults.
 
 1. **Plain English first.** Explain technology in terms of what it does for the reader. Reserve technical terms for technical audiences (engineering blog, API docs).
 2. **No "unlimited" without disclosure.** If a plan throttles past a soft cap, the cap and the post-cap speed must appear in the same sentence as the word "unlimited", every time.
@@ -38,6 +38,7 @@ Seven rules. These are the operational instructions the RAG copy generator shoul
 5. **Active voice for actions, passive only for policy framing.** "We bill you on the 5th of each month" beats "Billing is performed on the 5th." Passive is acceptable when describing a regulatory requirement applied to us, not by us.
 6. **Numbers belong in copy.** Specific GB allowances, specific dollar amounts, specific speeds. Vague language ("plenty of data," "fast speeds") fails the citation check at the legal/brand review gate.
 7. **No fear-based framing.** We do not sell against competitor failure modes. We describe what we do and let comparisons happen on the customer's terms.
+8. **No em dashes.** Use commas, colons, periods, or parentheses. Never the long dash character. Em dashes read as marketing-cliche and are banned across all Strand Wireless copy.
 
 ## §5. Vocabulary
 
