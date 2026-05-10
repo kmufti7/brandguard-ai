@@ -16,6 +16,9 @@ Usage:
 from __future__ import annotations
 
 import json
+import platform
+import statistics
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,6 +26,7 @@ from typing import Any
 from brandguard.agents.rag_copy_generation import build_index
 from brandguard.eval.eval_harness import (
     averages,
+    aggregate_timings,
     load_golden_dataset,
     score_scenario,
 )
@@ -80,6 +84,7 @@ def _run_one(scenario: dict[str, Any], faiss_index) -> dict[str, Any]:
         "scenario": scenario,
         "score": score,
         "kill_switch_triggered": workflow_result.get("kill_switch_triggered", False),
+        "node_timings_ms": dict(workflow_result.get("node_timings_ms") or {}),
     }
 
 
@@ -87,11 +92,16 @@ def main() -> None:
     scenarios = load_golden_dataset()
     faiss_index = build_index()
 
+    wall_start = time.perf_counter()
     rows: list[dict[str, Any]] = []
     for scenario in scenarios:
         rows.append(_run_one(scenario, faiss_index))
+    wall_elapsed = time.perf_counter() - wall_start
 
     avg = averages([r["score"] for r in rows])
+    timing_summary = aggregate_timings(
+        [r["node_timings_ms"] for r in rows], wall_elapsed
+    )
 
     lines: list[str] = []
     lines.append("# BrandGuard AI: Session 4 Eval Report\n")
@@ -122,6 +132,42 @@ def main() -> None:
     )
     lines.append(
         f"| brand_voice_alignment (deterministic) | {_fmt_avg(avg['brand_voice_alignment'])} | em dashes, intensifiers, autopay/unlimited disclosures, numbers in pricing context |"
+    )
+    lines.append("")
+
+    lines.append("## Throughput and Latency (D4)\n")
+    lines.append(
+        "Per-node and aggregate timings captured by `time.perf_counter()` "
+        "around each node body in `src/brandguard/workflow.py`. Each node's "
+        "elapsed_ms is also recorded in the WORM TOOL_EXECUTED exit payload."
+    )
+    lines.append("")
+    lines.append("**Per-node latency**")
+    lines.append("")
+    lines.append("| Node | Avg (ms) | p95 (ms) | n |")
+    lines.append("|------|----------|----------|---|")
+    for node_name, stats in timing_summary["per_node"].items():
+        lines.append(
+            f"| {node_name} | {stats['avg_ms']:.1f} | {stats['p95_ms']:.1f} | {stats['n']} |"
+        )
+    lines.append("")
+    lines.append("**Aggregate**")
+    lines.append("")
+    lines.append(
+        f"- Per-scenario average total latency: **{timing_summary['per_scenario_total_avg_ms']:.1f} ms**"
+    )
+    lines.append(
+        f"- Throughput: **{timing_summary['throughput_per_minute']:.2f} scenarios/minute**"
+    )
+    lines.append(
+        f"- Wall-clock runtime: **{timing_summary['wall_clock_seconds']:.2f} s** for "
+        f"{timing_summary['scenario_count']} scenarios"
+    )
+    lines.append("")
+    lines.append(
+        f"_Environment: Python {platform.python_version()}, machine "
+        f"{platform.machine()}, run at "
+        f"{datetime.now(timezone.utc).date().isoformat()}._"
     )
     lines.append("")
 

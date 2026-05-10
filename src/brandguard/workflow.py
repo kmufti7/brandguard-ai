@@ -9,7 +9,9 @@ Cross-cutting concerns:
   * WORM Logger from intelliflow-core writes at every node boundary
     (enter and exit) and at the final gate decision. The hash chain is
     HMAC-SHA256 with append-only SQLite triggers; chain integrity is
-    verifiable end-to-end.
+    verifiable end-to-end. Each node's TOOL_EXECUTED exit payload also
+    carries `elapsed_ms` (D4) so latency can be reconstructed from the
+    chain after the fact.
 
   * Kill-Switch Guard from intelliflow-core is checked on entry to every
     node. The default guard registers one conservative rule:
@@ -20,6 +22,12 @@ Cross-cutting concerns:
     final `WORKFLOW_END`, and returns a structured result with
     `kill_switch_triggered=True` instead of propagating the exception.
 
+  * Per-node timing (D4). Each node body is wrapped with
+    `time.perf_counter()` and the elapsed ms is (a) recorded in a
+    closure-captured dict that `run_workflow` returns as `node_timings_ms`,
+    and (b) attached to the existing `TOOL_EXECUTED` exit payload as
+    `elapsed_ms`. No new WORM event types are introduced.
+
 The workflow is deterministic in its routing: nodes always execute in
 order, and the gate decision is always written to WORM regardless of
 ALLOW/BLOCK outcome. There is no LLM-judged routing branch.
@@ -27,6 +35,7 @@ ALLOW/BLOCK outcome. There is no LLM-judged routing branch.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -99,7 +108,9 @@ def _audience_summary(matched: list[dict[str, Any]]) -> str:
     )
 
 
-def _build_audience_node(deps: WorkflowDeps, worm: WORMLogRepository):
+def _build_audience_node(
+    deps: WorkflowDeps, worm: WORMLogRepository, timings: dict[str, float]
+):
     def node(state: BrandGuardState) -> dict[str, Any]:
         if deps.kill_switch is not None:
             deps.kill_switch.intercept(state)
@@ -112,9 +123,12 @@ def _build_audience_node(deps: WorkflowDeps, worm: WORMLogRepository):
         if state.audience_query is None:
             raise ValueError("audience_query missing on state")
 
+        t_start = time.perf_counter()
         corpus = deps.corpus if deps.corpus is not None else load_corpus()
         filter_dict = extract_filter(state.audience_query, llm=deps.llm)
         matched = apply_filter(filter_dict, corpus)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        timings["audience_discovery"] = elapsed_ms
 
         worm.log_event(
             state.trace_id,
@@ -124,6 +138,7 @@ def _build_audience_node(deps: WorkflowDeps, worm: WORMLogRepository):
                 "phase": "exit",
                 "filter": filter_dict,
                 "match_count": len(matched),
+                "elapsed_ms": elapsed_ms,
             },
         )
         return {
@@ -135,7 +150,9 @@ def _build_audience_node(deps: WorkflowDeps, worm: WORMLogRepository):
     return node
 
 
-def _build_copy_node(deps: WorkflowDeps, worm: WORMLogRepository):
+def _build_copy_node(
+    deps: WorkflowDeps, worm: WORMLogRepository, timings: dict[str, float]
+):
     def node(state: BrandGuardState) -> dict[str, Any]:
         if deps.kill_switch is not None:
             deps.kill_switch.intercept(state)
@@ -148,6 +165,7 @@ def _build_copy_node(deps: WorkflowDeps, worm: WORMLogRepository):
         if state.campaign_brief is None:
             raise ValueError("campaign_brief missing on state")
 
+        t_start = time.perf_counter()
         index = deps.faiss_index if deps.faiss_index is not None else build_index()
         summary = _audience_summary(state.matched_records or [])
         result = generate_copy(
@@ -156,6 +174,8 @@ def _build_copy_node(deps: WorkflowDeps, worm: WORMLogRepository):
             faiss_index=index,
             llm=deps.llm,
         )
+        elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        timings["rag_copy_generation"] = elapsed_ms
 
         worm.log_event(
             state.trace_id,
@@ -166,6 +186,7 @@ def _build_copy_node(deps: WorkflowDeps, worm: WORMLogRepository):
                 "retrieved_anchors": result["retrieved_anchors"],
                 "citations": result["citations"],
                 "copy_chars": len(result["copy"]),
+                "elapsed_ms": elapsed_ms,
             },
         )
         return {
@@ -178,7 +199,9 @@ def _build_copy_node(deps: WorkflowDeps, worm: WORMLogRepository):
     return node
 
 
-def _build_gate_node(deps: WorkflowDeps, worm: WORMLogRepository):
+def _build_gate_node(
+    deps: WorkflowDeps, worm: WORMLogRepository, timings: dict[str, float]
+):
     def node(state: BrandGuardState) -> dict[str, Any]:
         if deps.kill_switch is not None:
             deps.kill_switch.intercept(state)
@@ -188,9 +211,12 @@ def _build_gate_node(deps: WorkflowDeps, worm: WORMLogRepository):
             {"node": "legal_brand_review_gate", "phase": "enter"},
         )
 
+        t_start = time.perf_counter()
         copy_text = state.generated_copy or ""
         citations = state.citations or []
         decision = review(copy_text, citations)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        timings["legal_brand_review_gate"] = elapsed_ms
 
         # Gate decision is always logged, regardless of ALLOW or BLOCK.
         worm.log_event(
@@ -202,6 +228,7 @@ def _build_gate_node(deps: WorkflowDeps, worm: WORMLogRepository):
                 "decision": decision.decision,
                 "failed_rules": decision.failed_rules,
                 "reasons": decision.reasons,
+                "elapsed_ms": elapsed_ms,
             },
         )
         return {
@@ -214,24 +241,31 @@ def _build_gate_node(deps: WorkflowDeps, worm: WORMLogRepository):
 
 
 def build_workflow(deps: WorkflowDeps | None = None):
-    """Compile the LangGraph workflow. Returns (compiled_graph, worm_repo, db_manager)."""
+    """Compile the LangGraph workflow.
+
+    Returns ``(compiled_graph, worm_repo, db_manager, timings)``. The
+    ``timings`` dict is closure-captured by each node and populated with
+    per-node elapsed milliseconds at exit. Callers that drive the graph
+    directly can read it after ``compiled.invoke()`` returns.
+    """
     if deps is None:
         deps = WorkflowDeps()
 
     db = DatabaseSessionManager(deps.worm_db_path)
     worm = WORMLogRepository(db)
+    timings: dict[str, float] = {}
 
     graph = StateGraph(BrandGuardState)
-    graph.add_node("audience_discovery", _build_audience_node(deps, worm))
-    graph.add_node("rag_copy_generation", _build_copy_node(deps, worm))
-    graph.add_node("legal_brand_review_gate", _build_gate_node(deps, worm))
+    graph.add_node("audience_discovery", _build_audience_node(deps, worm, timings))
+    graph.add_node("rag_copy_generation", _build_copy_node(deps, worm, timings))
+    graph.add_node("legal_brand_review_gate", _build_gate_node(deps, worm, timings))
 
     graph.set_entry_point("audience_discovery")
     graph.add_edge("audience_discovery", "rag_copy_generation")
     graph.add_edge("rag_copy_generation", "legal_brand_review_gate")
     graph.add_edge("legal_brand_review_gate", END)
 
-    return graph.compile(), worm, db
+    return graph.compile(), worm, db, timings
 
 
 def run_workflow(
@@ -251,7 +285,7 @@ def run_workflow(
     if deps.kill_switch is None:
         deps.kill_switch = default_kill_switch()
 
-    compiled, worm, db = build_workflow(deps)
+    compiled, worm, db, timings = build_workflow(deps)
     initial = BrandGuardState(
         audience_query=audience_query, campaign_brief=campaign_brief
     )
@@ -284,6 +318,7 @@ def run_workflow(
             "kill_switch_triggered": True,
             "failed_rules": failed_rule_ids,
             "worm_repo": None,
+            "node_timings_ms": dict(timings),
         }
 
     worm.log_event(initial.trace_id, "WORKFLOW_END", {"trace_id": initial.trace_id})
@@ -293,6 +328,7 @@ def run_workflow(
         "trace_id": initial.trace_id,
         "worm_chain": chain,
         "kill_switch_triggered": False,
+        "node_timings_ms": dict(timings),
         "worm_repo": worm,
         "_db": db,
     }

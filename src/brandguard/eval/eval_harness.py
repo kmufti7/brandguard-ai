@@ -56,6 +56,7 @@ from __future__ import annotations
 
 import json
 import re
+import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -352,4 +353,71 @@ def averages(score_rows: list[dict[str, Any]]) -> dict[str, float | None]:
         "context_recall": _avg("context_recall"),
         "citation_existence": _avg("citation_existence"),
         "brand_voice_alignment": _avg("brand_voice_alignment"),
+    }
+
+
+def _percentile(values: list[float], pct: float) -> float:
+    """Linear-interpolation percentile, no numpy dep.
+
+    Returns 0.0 on empty input. ``pct`` is in [0, 100].
+    """
+    if not values:
+        return 0.0
+    if len(values) == 1:
+        return float(values[0])
+    sorted_vals = sorted(values)
+    rank = (pct / 100.0) * (len(sorted_vals) - 1)
+    lo = int(rank)
+    hi = min(lo + 1, len(sorted_vals) - 1)
+    frac = rank - lo
+    return float(sorted_vals[lo] + (sorted_vals[hi] - sorted_vals[lo]) * frac)
+
+
+def aggregate_timings(
+    per_scenario_timings: list[dict[str, float]],
+    wall_clock_seconds: float,
+) -> dict[str, Any]:
+    """Aggregate per-node timings across many scenarios into a report-ready summary.
+
+    Inputs:
+        per_scenario_timings: one dict per scenario, mapping node_name to elapsed_ms.
+                              Scenarios where a node did not execute (e.g. kill-switch
+                              trip skipped a node) simply omit that key.
+        wall_clock_seconds:   total runtime measured outside the scenarios.
+
+    Returns:
+        {
+          "per_node": {node_name: {"avg_ms": float, "p95_ms": float, "n": int}},
+          "per_scenario_total_avg_ms": float,
+          "throughput_per_minute": float,
+          "wall_clock_seconds": float,
+          "scenario_count": int,
+        }
+    """
+    nodes: set[str] = set()
+    for row in per_scenario_timings:
+        nodes.update(row.keys())
+
+    per_node: dict[str, dict[str, float]] = {}
+    for node in sorted(nodes):
+        vals = [row[node] for row in per_scenario_timings if node in row]
+        per_node[node] = {
+            "avg_ms": statistics.mean(vals) if vals else 0.0,
+            "p95_ms": _percentile(vals, 95.0),
+            "n": len(vals),
+        }
+
+    per_scenario_totals = [sum(row.values()) for row in per_scenario_timings if row]
+    avg_total = statistics.mean(per_scenario_totals) if per_scenario_totals else 0.0
+    scenario_count = len(per_scenario_timings)
+    throughput = (
+        (scenario_count / wall_clock_seconds) * 60.0 if wall_clock_seconds > 0 else 0.0
+    )
+
+    return {
+        "per_node": per_node,
+        "per_scenario_total_avg_ms": avg_total,
+        "throughput_per_minute": throughput,
+        "wall_clock_seconds": wall_clock_seconds,
+        "scenario_count": scenario_count,
     }
