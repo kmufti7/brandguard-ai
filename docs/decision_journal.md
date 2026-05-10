@@ -453,3 +453,72 @@ Tight scope work gets its own session number with a decimal, like 4.1 for the th
 ### Related
 
 Session 2A.1 Log, Session 4.1 Log, this Session 4.2 Log. Backfilled 2026-05-09 from Notion session logs.
+
+---
+
+## DJ-010: Pre-pass discipline for Claude Chat drafts going to CC
+Date: 2026-05-09
+Session: 4.2
+Status: Decided
+Owner: Kamil
+
+### The Question
+Session 4.2 surfaced a hard contradiction in the CC command Claude Chat drafted. "Commit verbatim" combined with "no em dashes anywhere" and a 0-hit em dash grep verification step. The drafted DJ entries contained 12 em dashes. CC absorbed the cost of resolving it under pressure. Flag, choose reality (em dash ban), substitute, document. CC handled it well. Should the contradiction have reached CC at all?
+
+### Options Considered
+- A. Accept that Claude Chat drafts will sometimes contradict project rules. Rely on CC's P20 discipline to catch them at commit time.
+- B. Codify a pre-pass discipline. Every Claude Chat-drafted text destined for CC commit must pre-pass the project's Doc QC verifier rules (banned phrases, em dashes, citation format) before being issued in the CC command.
+- C. Build a verifier-in-chat tool that Claude Chat runs on its own drafts before sending.
+
+### Decision
+B. P25 codified. Claude Chat pre-passes drafts through the same rules CC will verify. CC remains the second-pass guard. Confidence: High.
+
+### Why This Choice
+The Doc QC pipeline (DJ-007) exists to keep documentation honest. Claude Chat is one of the authors. Authors that do not self-audit before submission burn CC's review budget on noise. The 12 em dashes in Session 4.2 cost CC time and forced an under-pressure P20 call. Pre-passing in chat catches them in the draft, where revision is cheap.
+
+### What This Forecloses
+Slight friction. Claude Chat has to grep its own outputs before issuing CC commands. Mitigated. It is a constant-time check, not a creative bottleneck.
+
+### Downstream Implications
+P25 explicit in Context v1.10. Future CC commands from Claude Chat that include verbatim text include a pre-pass step in the chat reasoning. When Session 5A pipeline is built, the same banned phrase list serves as the pre-pass check for chat drafts.
+
+### Interview Framing
+Mistake caught. Drafted DJ entries in chat using em dashes while the project bans them. CC flagged it via P20 (always flag, never silent fix), substituted 12 em dashes with equivalent punctuation, documented every swap in the session log. Codified the lesson. Claude Chat now self-audits text drafts against the project's banned-phrase and punctuation rules before sending them to CC for commit. Better hygiene. Same discipline as the Doc QC pipeline.
+
+### Related
+DJ-007 (Doc QC pipeline), P20, P21, Session 4.2 Log.
+
+---
+
+## DJ-011: Scaling priorities for the agentic workflow
+Date: 2026-05-09
+Session: 5A (decided post-Session 4.1 timing data)
+Status: Decided
+Owner: Kamil
+
+### The Question
+The Session 4.1 timing data shows 9.5 scenarios/minute throughput in single-user serial mode. RAG copy generation takes 75% of per-scenario latency, audience discovery 25%, the deterministic gate 0.03%. If this needed to scale to production, in what order should the bottlenecks be addressed, and what does each step trade?
+
+### Options Considered
+- A. Vertical scaling. Faster model (Sonnet over Haiku) plus larger embedding model.
+- B. Parallelization across scenarios. Run N scenarios concurrently against the LLM and the FAISS index.
+- C. LLM-call batching. Batch the prompts of multiple scenarios into single API calls.
+- D. Embedding and retrieval caching. Cache FAISS results for repeated audience queries.
+
+### Decision
+B then C then D. Vertical (A) is rejected as the first move because it trades cost for latency without addressing the architectural bottleneck. Confidence: High.
+
+### Why This Choice
+The data tells the order. RAG copy generation is one async LLM call per scenario. Scenarios are independent. Parallelization is the cleanest unlock. Batching gives the next compression but adds complexity in error handling per scenario. Caching helps only when queries repeat, which is a usage-pattern question that comes after architectural scale. Vertical scaling (bigger model) trades latency for cost and only matters once parallelization is saturated.
+
+### What This Forecloses
+Parallelization assumes scenarios are independent. If future work introduces cross-scenario state (e.g., personalization based on prior outputs in the same session), serial is forced again. Batching also assumes the LLM API supports prompt batching efficiently. Current Anthropic API does, but rate limits become the new bottleneck.
+
+### Downstream Implications
+B6 (Token FinOps Tracker integration) becomes more relevant because parallelization changes the cost-per-scenario calculation. The eval harness will need a parallel runner mode in Session 5A or 5B. The gate's sub-millisecond performance does not change at scale. It remains negligible.
+
+### Interview Framing
+The data says where to spend time. RAG copy generation is 75% of per-scenario latency. Scenarios are independent. So parallelization comes first. Batching second, when the API supports it cleanly. Caching third, because it only matters if queries repeat. Vertical scaling (bigger model) is not the first move because it trades cost for latency without fixing the architecture. Gate is sub-millisecond. Stays sub-millisecond.
+
+### Related
+DJ-002 (deterministic gate validated at scale by sub-ms timing), Session 4.1 latency data, backlog B6 (Token FinOps). Decided 2026-05-09 based on Session 4.1 numbers.

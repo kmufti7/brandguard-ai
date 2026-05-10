@@ -59,9 +59,9 @@ USE:
 
 Resume context is silent on the IntelliFlow lineage. README discloses it. Treat that asymmetry as a hard rule.
 
-## Process Rules (P17-P24)
+## Process Rules (P17-P25)
 
-The full process fix log is maintained in the Notion Context document (single source of truth per DNA §0). One-line summaries surfaced here for reference; consult Notion Context v1.9 for the full text and rationale of each rule.
+The full process fix log is maintained in the Notion Context document (single source of truth per DNA §0). One-line summaries surfaced here for reference; consult Notion Context v1.10 for the full text and rationale of each rule.
 
 - **P17**: tracked in Notion Context process fix log.
 - **P18**: tracked in Notion Context process fix log.
@@ -71,12 +71,15 @@ The full process fix log is maintained in the Notion Context document (single so
 - **P22**: don't reintroduce LLM judgment for code-answerable questions. Eval metrics, gate rules, and constraint checks default to deterministic. LLM judgment is acceptable for offline regression on questions that resist mechanical encoding (e.g., faithfulness across paraphrase) but not for any release-gating decision or any check where mechanical encoding is feasible.
 - **P23**: Every architectural / product / process decision gets a Decision Journal entry the same session it is made. Text drafted in Claude Chat during §11 cascade or assessor review, committed verbatim by CC. Bar: decisions only, not implementation choices. Backfilled entries explicitly note backfill date and source.
 - **P24**: Decision Journal entries pass through the Doc QC pipeline (P21) once Session 5A is built. Until then, raw commits with Critic rubric audit at first pipeline run.
+- **P25**: Claude Chat pre-passes any text destined for CC commit through the project's banned-phrase list, em-dash check, and citation-format rules before issuing the CC command. CC remains the second-pass guard. Discovered Session 4.2 via the em-dash substitution incident. Codified the same session as DJ-010.
 
 ## Decision Journal
 
-`docs/decision_journal.md` is the append-only log of every architectural, product, and process decision made on this project. It is the source artifact for ADRs (HOW) and PDRs (WHY). Required deliverable: every Session Log going forward must reference any new DJ-NNN entries created or updated during that session, with the entry's status field (`Open` / `Decided` / `Promoted to PDR-NNN` / `Promoted to ADR-NNN` / `Superseded by DJ-NNN`).
+`docs/decision_journal.md` is the append-only log of every architectural, product, and process decision made on this project (11 entries: DJ-001..DJ-011). It is the source artifact for ADRs (HOW) and PDRs (WHY). Required deliverable: every Session Log going forward must reference any new DJ-NNN entries created or updated during that session, with the entry's status field (`Open` / `Decided` / `Promoted to PDR-NNN` / `Promoted to ADR-NNN` / `Superseded by DJ-NNN`).
 
 DJ-NNN numbers are permanent once committed. Status changes update in place; text changes append a `### REVISED YYYY-MM-DD` block, never a silent edit. Backfilled entries explicitly note backfill date and source.
+
+The banned phrase list at `scripts/doc_pipeline/banned_phrases.txt` is a living artifact. Add phrases via a DJ entry when new generic noise surfaces (backlog B13).
 
 ## Repository Layout
 
