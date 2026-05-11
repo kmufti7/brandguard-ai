@@ -53,6 +53,28 @@ DEFAULT_WORM_DB = str(REPO_ROOT / "brandguard_worm.db")
 MAX_CYCLES = 3
 
 
+def _patch_frontmatter_state(doc_path: Path, new_state: str) -> None:
+    """DJ-017: rewrite the doc's frontmatter `state:` field. Idempotent.
+
+    The Author Agent writes `state: DRAFTED` or `state: REVISED` when it
+    drafts/revises. The orchestrator owns the transition to VERIFIED, so
+    when verifier passes we must rewrite the frontmatter to match the
+    sidecar truth.
+    """
+    import re as _re
+
+    text = doc_path.read_text(encoding="utf-8")
+    patched = _re.sub(
+        r"^(state:\s*)\S+",
+        rf"\g<1>{new_state}",
+        text,
+        count=1,
+        flags=_re.MULTILINE,
+    )
+    if patched != text:
+        doc_path.write_text(patched, encoding="utf-8")
+
+
 @dataclass
 class StateTransition:
     cycle: int
@@ -161,6 +183,7 @@ def run_pipeline(
 
         if verifier_result.passed:
             final_state = "VERIFIED"
+            _patch_frontmatter_state(output_path, "VERIFIED")
             t = StateTransition(
                 cycle=cycle,
                 state="VERIFIED",

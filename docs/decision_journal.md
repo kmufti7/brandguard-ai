@@ -712,3 +712,71 @@ The banned phrase list is the verifier's grep dictionary. Fifteen phrases shippe
 ### Related
 
 scripts/doc_pipeline/banned_phrases.txt, scripts/doc_pipeline/verifier.py, backlog B13, DJ-007 (pipeline).
+
+---
+
+## DJ-016: Author and Critic Agents via Anthropic API, not nested Claude Code subagent processes
+Date: 2026-05-10
+Session: 5A (decided), 5B Task 0c (committed)
+Status: Decided
+Owner: Kamil
+
+### The Question
+Session 5A's spec said "spawn a fresh Claude Code subagent (NOT recursive into the same context)" for both the Author and Critic Agents in the Doc QC pipeline. The intent was independent LLM context, role isolation, no orchestrator memory leakage. Reality: spawning a Claude Code subagent process from inside Python is not a callable interface. Anthropic's Python SDK exposes Anthropic API calls, not nested CC processes. How should the orchestrator achieve "fresh subagent" semantics when the literal mechanism is unavailable?
+
+### Options Considered
+- A. Wait until nested CC subagent spawning is available; defer the pipeline build.
+- B. Implement Author and Critic as fresh Anthropic API calls with role-isolated system prompts. Each call has no shared state with the orchestrator's runtime memory; the LLM instance is a fresh API request.
+- C. Use a shared session with role-prompt injection in a single context window.
+
+### Decision
+B. Author and Critic are independent anthropic.Anthropic().messages.create() calls with role-specific system prompts. Confidence: High.
+
+### Why This Choice
+The semantic intent of "fresh subagent" is independent LLM context, role isolation, no memory leakage from orchestrator state into the agent's reasoning. An Anthropic API call with a role-specific system prompt achieves all three. The LLM has only the system prompt and user message. No chat history from the orchestrator. No shared variables. Each call is stateless on the LLM side. The fact that the Python orchestrator wrapper is the same process is immaterial to the LLM. The orchestrator could be implemented as separate processes; the result would be identical because the LLM only sees its prompt context.
+
+### What This Forecloses
+The pipeline cannot use Claude Code-specific subagent affordances (tools, MCP access, file-system permissions) that nested CC processes might offer. For documentation generation, those affordances are not needed. The Author Agent just produces text from a brief; the Critic Agent just scores text against a rubric. If future pipeline stages need file-system access or tool use, they would need either explicit Python implementation or genuine nested CC subagent spawning if and when Anthropic makes it available.
+
+### Downstream Implications
+The pipeline architecture is portable. It does not require Claude Code to run. Any environment with the Anthropic SDK can execute the pipeline. This is a portfolio strength: the system is not locked to Claude Code. Documented explicitly in the README and ARCHITECTURE.md when 5B writes those. The Verifier remains plain Python, no LLM. The Author and Critic Agents are bounded by their system prompts; rubric-bounded judgment continues to apply.
+
+### Interview Framing
+The spec said "subagent." The closest reality from inside Python is a fresh Anthropic API call with a role-isolated system prompt. Same semantic intent: no memory leakage, fresh LLM context per call. I documented this as an architectural deviation in the Session 5A log and codified it here. The pipeline runs the same on or off Claude Code as a result; portability is a bonus.
+
+### Related
+DJ-007 (Doc QC pipeline architecture), Session 5A architectural-delta log entry, P22 (Critic is LLM-judged but bounded by rubric; Verifier is deterministic Python; together they remain fail-closed).
+
+---
+
+## DJ-017: Orchestrator patches frontmatter state on VERIFIED transition
+Date: 2026-05-10
+Session: 5B Task 0d
+Status: Decided
+Owner: Kamil
+
+### The Question
+The Doc QC pipeline's orchestrator transitions a doc to VERIFIED state by writing a `.qc.json` sidecar. The doc's own frontmatter `state:` field, written earlier by the Author Agent during DRAFTED/REVISED, is not updated. PRODUCT_OVERVIEW.md was committed in Session 5A with `state: REVISED` even though its sidecar correctly shows VERIFIED. Should the orchestrator update the frontmatter, or is the sidecar the canonical truth?
+
+### Options Considered
+- A. Orchestrator patches the doc's frontmatter state field on VERIFIED. Single source of truth in the doc.
+- B. Sidecar is canonical; frontmatter state is informational. README documents the sidecar as the truth source.
+- C. Remove the state field from frontmatter entirely.
+
+### Decision
+A. Orchestrator patches frontmatter on VERIFIED. Confidence: High.
+
+### Why This Choice
+Most readers will look at the doc, not the sidecar. The frontmatter is the doc's metadata; if it says REVISED while the sidecar says VERIFIED, the doc is lying about its own state. Same artifact-discipline argument as DJ-008 (committed artifacts should mean what they say). The fix is mechanical: one regex rewrite of one line on successful transition.
+
+### What This Forecloses
+The frontmatter is now mutable by the orchestrator after the Author writes it. If a future change wants strict author-only writes, it would need to refactor. Acceptable; the orchestrator is the legitimate transition authority.
+
+### Downstream Implications
+12 remaining doc runs in Session 5B will have correct frontmatter from the start. The patch backfills PRODUCT_OVERVIEW.md as part of Task 0d.
+
+### Interview Framing
+Caught a small bug. Doc frontmatter said REVISED while the sidecar said VERIFIED. Pipeline orchestrator now patches frontmatter on VERIFIED transition. Committed artifacts mean what they say; same discipline as the eval evidence split.
+
+### Related
+DJ-007, DJ-008, Session 5A scope-drift flag 4.

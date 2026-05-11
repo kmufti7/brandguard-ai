@@ -59,3 +59,30 @@ def test_verifier_passes_clean_doc(tmp_path: Path):
     result = verify(doc, BANNED, REPO_ROOT)
     assert result.passed is True, result.failures
     assert result.failures == []
+
+
+def test_orchestrator_patches_frontmatter_state_on_verified(tmp_path: Path):
+    """DJ-017: after orchestrator transitions to VERIFIED, the doc's frontmatter
+    state field is rewritten from DRAFTED/REVISED to VERIFIED.
+
+    We exercise the helper directly (no LLM calls) since it is the unit of work
+    that DJ-017 codifies. End-to-end orchestrator flow already covered by the
+    proof run in Session 5A.
+    """
+    from scripts.doc_pipeline.orchestrator import _patch_frontmatter_state
+
+    doc = tmp_path / "sample.md"
+    doc.write_text(
+        "---\nstate: REVISED\nword_count_floor: 100\nbrief: x.brief.md\n---\n\nbody text",
+        encoding="utf-8",
+    )
+    _patch_frontmatter_state(doc, "VERIFIED")
+    text = doc.read_text(encoding="utf-8")
+    state_line = next(line for line in text.splitlines() if line.startswith("state:"))
+    assert state_line == "state: VERIFIED"
+    # Idempotent: second call leaves it unchanged.
+    _patch_frontmatter_state(doc, "VERIFIED")
+    state_line2 = next(
+        line for line in doc.read_text().splitlines() if line.startswith("state:")
+    )
+    assert state_line2 == "state: VERIFIED"

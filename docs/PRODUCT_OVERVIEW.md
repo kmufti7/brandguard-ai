@@ -1,5 +1,5 @@
 ---
-state: REVISED
+state: VERIFIED
 timestamp: 2026-05-10T23:41:40.207628+00:00
 brief: scripts/doc_pipeline/briefs/product_overview.brief.md
 mode: plugin
