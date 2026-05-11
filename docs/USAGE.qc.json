@@ -1,0 +1,110 @@
+{
+  "doc_slug": "usage",
+  "trace_id": "doc_pipeline:usage:a03613d7-4ba0-43a2-9c50-39e16baeb2f4",
+  "final_state": "VERIFIED",
+  "cycles_used": 2,
+  "final_critique": {
+    "overall_pass": true,
+    "dimensions": {
+      "Specificity": {
+        "score": 9,
+        "issues": [],
+        "asks": []
+      },
+      "Evidence Trail": {
+        "score": 8,
+        "issues": [
+          "Claim that legal_brand_review_gate 'enforces FCC compliance and trademark rules' is author-asserted without citation to the gate implementation or FCC documentation.",
+          "Statement 'deterministic mode cannot call external APIs such as FCC lookups' lacks source reference; could cite the actual rule engine code or API layer.",
+          "DJ-008 reference for mode selection criteria is cited but the document does not quote or link the actual decision record."
+        ],
+        "asks": [
+          "Add a source link or code reference (e.g., 'See src/brandguard/governance/legal_brand_review_gate.py:42-67') to the FCC enforcement claim.",
+          "Link to the API restriction logic in the deterministic rule engine or add a comment explaining which code layer enforces the no-external-API constraint.",
+          "Either inline the DJ-008 criteria in a footnote or provide a file path to the decision record so readers can verify the mode guidance themselves."
+        ]
+      },
+      "Honest Scope": {
+        "score": 9,
+        "issues": [
+          "The 'Entry-Level Operations' section mentions 'intermediate rule evaluation steps' are not logged, which is clear, but does not explicitly state whether evaluation reports (generated in separate session) can become stale or drift from WORM chain decisions."
+        ],
+        "asks": [
+          "Add one sentence clarifying whether evaluation reports cached in src/brandguard/evaluation/report_cache/ are versioned or timestamped to prevent confusion about temporal alignment with WORM entries."
+        ]
+      },
+      "Voice": {
+        "score": 9,
+        "issues": [],
+        "asks": []
+      }
+    },
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Claim that legal_brand_review_gate 'enforces FCC compliance and trademark rules' is author-asserted without citation to the gate implementation or FCC documentation.\",\n        \"Statement 'deterministic mode cannot call external APIs such as FCC lookups' lacks source reference; could cite the actual rule engine code or API layer.\",\n        \"DJ-008 reference for mode selection criteria is cited but the document does not quote or link the actual decision record.\"\n      ],\n      \"asks\": [\n        \"Add a source link or code reference (e.g., 'See src/brandguard/governance/legal_brand_review_gate.py:42-67') to the FCC enforcement claim.\",\n        \"Link to the API restriction logic in the deterministic rule engine or add a comment explaining which code layer enforces the no-external-API constraint.\",\n        \"Either inline the DJ-008 criteria in a footnote or provide a file path to the decision record so readers can verify the mode guidance themselves.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [\n        \"The 'Entry-Level Operations' section mentions 'intermediate rule evaluation steps' are not logged, which is clear, but does not explicitly state whether evaluation reports (generated in separate session) can become stale or drift from WORM chain decisions.\"\n      ],\n      \"asks\": [\n        \"Add one sentence clarifying whether evaluation reports cached in src/brandguard/evaluation/report_cache/ are versioned or timestamped to prevent confusion about temporal alignment with WORM entries.\"\n      ]\n    },\n    \"Voice\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    }\n  }\n}\n```"
+  },
+  "final_verifier": {
+    "passed": true,
+    "failures": []
+  },
+  "state_history": [
+    {
+      "cycle": 0,
+      "state": "DRAFTED",
+      "timestamp": "2026-05-11T22:45:13.995414+00:00",
+      "detail": {
+        "state": "DRAFTED",
+        "output_path": "docs/USAGE.md",
+        "word_count": 660
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:45:24.666758+00:00",
+      "detail": {
+        "overall_pass": false,
+        "scores": {
+          "Specificity": 9,
+          "Evidence Trail": 6,
+          "Honest Scope": 7,
+          "Voice": 8
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "REVISED",
+      "timestamp": "2026-05-11T22:45:43.400840+00:00",
+      "detail": {
+        "state": "REVISED",
+        "output_path": "docs/USAGE.md",
+        "word_count": 1002
+      }
+    },
+    {
+      "cycle": 2,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:45:49.092415+00:00",
+      "detail": {
+        "overall_pass": true,
+        "scores": {
+          "Specificity": 9,
+          "Evidence Trail": 8,
+          "Honest Scope": 9,
+          "Voice": 9
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "state": "VERIFIED",
+      "timestamp": "2026-05-11T22:45:49.135510+00:00",
+      "detail": {
+        "verifier": {
+          "passed": true,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "worm_chain_verified": true
+}

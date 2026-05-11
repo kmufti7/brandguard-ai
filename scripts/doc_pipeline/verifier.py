@@ -234,12 +234,14 @@ def _check_doc_to_doc_links(
 ) -> None:
     for m in _MD_LINK.finditer(text):
         target = m.group(1).strip()
-        # Resolve relative to the doc's parent.
+        # Resolve relative to the doc's parent; if that fails, try repo root.
+        candidates = []
         if target.startswith("/"):
-            resolved = repo_root / target.lstrip("/")
+            candidates.append(repo_root / target.lstrip("/"))
         else:
-            resolved = (doc_path.parent / target).resolve()
-        if not resolved.exists():
+            candidates.append((doc_path.parent / target).resolve())
+            candidates.append((repo_root / target).resolve())
+        if not any(c.exists() for c in candidates):
             line = text[: m.start()].count("\n") + 1
             failures.append(
                 VerifierFailure(

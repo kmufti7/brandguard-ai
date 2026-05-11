@@ -10,7 +10,7 @@ evidence_sources: docs/PRD_BRANDGUARD.md, docs/adr/, src/brandguard/, data/, doc
 
 # Brief: CONTRIBUTING.md
 
-Produce a short CONTRIBUTING guide. Cover: testing protocol (pytest must pass before PR), the doc QC pipeline (any new doc routes through it, per DJ-007), DJ entries for architectural decisions (P23), the banned-phrase list and em dash ban, the P25 pre-pass discipline.
+Produce a short CONTRIBUTING guide. Cover: testing protocol (pytest must pass before PR), the doc QC pipeline (any new doc routes through it, per DJ-007), DJ entries for architectural decisions (P23), the project's style discipline (point readers to scripts/doc_pipeline/banned_phrases.txt for the banned word list and brand_voice.md section 4 for the punctuation rules; DO NOT quote any specific banned word by name in this doc), the P25 pre-pass discipline.
 
 ## Voice + constraints
 

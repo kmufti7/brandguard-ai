@@ -1,0 +1,92 @@
+{
+  "doc_slug": "contributing",
+  "trace_id": "doc_pipeline:contributing:0e36df66-b64f-4272-9a9d-5aea24c5ec1f",
+  "final_state": "VERIFIED",
+  "cycles_used": 1,
+  "final_critique": {
+    "overall_pass": true,
+    "dimensions": {
+      "Specificity": {
+        "score": 8,
+        "issues": [
+          "Line 'Review the list before submitting prose-heavy contributions' is somewhat vague about what 'prose-heavy' means; could specify word count or doc type threshold.",
+          "Line 'Read section 4 in full' assumes readers know how long section 4 is; no guidance on expected reading time."
+        ],
+        "asks": [
+          "Define 'prose-heavy contributions' with a concrete threshold (e.g., 'contributions over 500 words of narrative text').",
+          "Add estimated reading time for data/brand_voice.md section 4 or word count to set expectations."
+        ]
+      },
+      "Evidence Trail": {
+        "score": 7,
+        "issues": [
+          "Reference to 'P23 internally' for DJ process tracking is author-asserted; no link or citation to where P23 is documented.",
+          "Line 'The DJ process is tracked as P23 internally' uses internal project code without explaining where readers can verify this mapping."
+        ],
+        "asks": [
+          "Cite the location where P23 is defined (e.g., 'See the internal project tracker at [link]' or 'P23 in docs/tracking.md').",
+          "Link or reference the decision journal entry that documents the DJ process itself."
+        ]
+      },
+      "Honest Scope": {
+        "score": 9,
+        "issues": [],
+        "asks": []
+      },
+      "Voice": {
+        "score": 8,
+        "issues": [
+          "Line 'Thank you for helping improve BrandGuard AI' reads slightly formal/polite; Strand voice typically skips this courtesy preamble and goes straight to facts.",
+          "Line 'Our style standards are non-negotiable' is bold but borders on corporate decree language; slightly softer Strand voice would be 'Our style standards matter. Here's why.'"
+        ],
+        "asks": [
+          "Open with 'Here's how to contribute' or similar direct framing instead of gratitude.",
+          "Soften 'non-negotiable' to match Strand's plain-spoken but collaborative tone, e.g., 'Our style standards are enforced by automated QC.'"
+        ]
+      }
+    },
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line 'Review the list before submitting prose-heavy contributions' is somewhat vague about what 'prose-heavy' means; could specify word count or doc type threshold.\",\n        \"Line 'Read section 4 in full' assumes readers know how long section 4 is; no guidance on expected reading time.\"\n      ],\n      \"asks\": [\n        \"Define 'prose-heavy contributions' with a concrete threshold (e.g., 'contributions over 500 words of narrative text').\",\n        \"Add estimated reading time for data/brand_voice.md section 4 or word count to set expectations.\"\n      ]\n    },\n    \"Evidence Trail\": {\n      \"score\": 7,\n      \"issues\": [\n        \"Reference to 'P23 internally' for DJ process tracking is author-asserted; no link or citation to where P23 is documented.\",\n        \"Line 'The DJ process is tracked as P23 internally' uses internal project code without explaining where readers can verify this mapping.\"\n      ],\n      \"asks\": [\n        \"Cite the location where P23 is defined (e.g., 'See the internal project tracker at [link]' or 'P23 in docs/tracking.md').\",\n        \"Link or reference the decision journal entry that documents the DJ process itself.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line 'Thank you for helping improve BrandGuard AI' reads slightly formal/polite; Strand voice typically skips this courtesy preamble and goes straight to facts.\",\n        \"Line 'Our style standards are non-negotiable' is bold but borders on corporate decree language; slightly softer Strand voice would be 'Our style standards matter. Here's why.'\"\n      ],\n      \"asks\": [\n        \"Open with 'Here's how to contribute' or similar direct framing instead of gratitude.\",\n        \"Soften 'non-negotiable' to match Strand's plain-spoken but collaborative tone, e.g., 'Our style standards are enforced by automated QC.'\"\n      ]\n    }\n  }\n}\n```"
+  },
+  "final_verifier": {
+    "passed": true,
+    "failures": []
+  },
+  "state_history": [
+    {
+      "cycle": 0,
+      "state": "DRAFTED",
+      "timestamp": "2026-05-11T22:48:52.608757+00:00",
+      "detail": {
+        "state": "DRAFTED",
+        "output_path": "docs/CONTRIBUTING.md",
+        "word_count": 449
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:48:58.194258+00:00",
+      "detail": {
+        "overall_pass": true,
+        "scores": {
+          "Specificity": 8,
+          "Evidence Trail": 7,
+          "Honest Scope": 9,
+          "Voice": 8
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "VERIFIED",
+      "timestamp": "2026-05-11T22:48:58.238758+00:00",
+      "detail": {
+        "verifier": {
+          "passed": true,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "worm_chain_verified": true
+}

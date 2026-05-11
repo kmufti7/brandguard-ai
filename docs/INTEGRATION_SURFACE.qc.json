@@ -1,0 +1,98 @@
+{
+  "doc_slug": "integration_surface",
+  "trace_id": "doc_pipeline:integration_surface:e17d73d3-9409-4fb4-babc-ec3484843b9e",
+  "final_state": "VERIFIED",
+  "cycles_used": 1,
+  "final_critique": {
+    "overall_pass": true,
+    "dimensions": {
+      "Specificity": {
+        "score": 8,
+        "issues": [
+          "Salesforce section: 'inline citations linking each message section to brand guidelines or campaign objectives' \u2014 what format do these citations take? Example missing.",
+          "Adobe Campaign section: reference to '[file:data/brand_voice.md]' is a file path assertion without confirmation it exists or what it contains.",
+          "Iterable section: 'brand-compliance checkmarks' \u2014 checkmarks against which specific criteria? Left abstract."
+        ],
+        "asks": [
+          "Add one concrete example of a WORM trace ID format or structure (e.g., 'UUID-timestamp-model_version').",
+          "Clarify what 'inline citations' look like in output: are they footnote-style, embedded tags, or a separate metadata object?",
+          "For the Adobe file reference, either confirm existence with a brief description of its contents or remove the file path notation."
+        ]
+      },
+      "Evidence Trail": {
+        "score": 7,
+        "issues": [
+          "No source or citation for the claim that Salesforce Marketing Cloud Data Extensions use 'tabular format' \u2014 this is product documentation, not author assertion, but it's stated without a link.",
+          "Marketo section states 'engagement score above 50, industry equals \"telecommunications,\" clicked email in last 30 days' as example criteria \u2014 these are illustrative, not sourced from a schema doc.",
+          "WORM trace concept is described but no reference to where this specification is defined or how it's implemented."
+        ],
+        "asks": [
+          "Link to Salesforce Marketing Cloud Data Extension documentation or API spec for the data structure claim.",
+          "Add a note that Marketo example criteria are illustrative; optionally link to Marketo Smart List documentation if available in the repo.",
+          "Cite or reference an internal spec for WORM trace ID structure (e.g., 'See [internal doc] for WORM trace schema') or confirm it exists in the repo."
+        ]
+      },
+      "Honest Scope": {
+        "score": 9,
+        "issues": [],
+        "asks": []
+      },
+      "Voice": {
+        "score": 8,
+        "issues": [
+          "Opening paragraph: 'BrandGuard AI operates at the entry point of marketing technology stacks' \u2014 slightly abstract phrasing; 'entry point' could be plainer.",
+          "Phrase 'accelerates copy creation and ensures compliance at the point of generation' (final section) is slightly formulaic; reads less direct than typical Strand Wireless voice.",
+          "Minor: 'preserving team accountability and allowing rapid rejection' \u2014 'rapid rejection' is a bit marketing-speak; plain alternative: 'lets teams reject content quickly.'"
+        ],
+        "asks": [
+          "Rephrase opening to be more direct: e.g., 'BrandGuard AI sits where marketing platforms receive audience data; it returns brand-aligned copy with full compliance tracking.'",
+          "In the final Governance section, replace 'accelerates copy creation and ensures compliance' with simpler language: 'generates copy faster and checks compliance on the spot.'",
+          "Change 'allowing rapid rejection' to 'lets teams reject content quickly' or 'ensures content can be rejected instantly.'"
+        ]
+      }
+    },
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Salesforce section: 'inline citations linking each message section to brand guidelines or campaign objectives' \u2014 what format do these citations take? Example missing.\",\n        \"Adobe Campaign section: reference to '[file:data/brand_voice.md]' is a file path assertion without confirmation it exists or what it contains.\",\n        \"Iterable section: 'brand-compliance checkmarks' \u2014 checkmarks against which specific criteria? Left abstract.\"\n      ],\n      \"asks\": [\n        \"Add one concrete example of a WORM trace ID format or structure (e.g., 'UUID-timestamp-model_version').\",\n        \"Clarify what 'inline citations' look like in output: are they footnote-style, embedded tags, or a separate metadata object?\",\n        \"For the Adobe file reference, either confirm existence with a brief description of its contents or remove the file path notation.\"\n      ]\n    },\n    \"Evidence Trail\": {\n      \"score\": 7,\n      \"issues\": [\n        \"No source or citation for the claim that Salesforce Marketing Cloud Data Extensions use 'tabular format' \u2014 this is product documentation, not author assertion, but it's stated without a link.\",\n        \"Marketo section states 'engagement score above 50, industry equals \\\"telecommunications,\\\" clicked email in last 30 days' as example criteria \u2014 these are illustrative, not sourced from a schema doc.\",\n        \"WORM trace concept is described but no reference to where this specification is defined or how it's implemented.\"\n      ],\n      \"asks\": [\n        \"Link to Salesforce Marketing Cloud Data Extension documentation or API spec for the data structure claim.\",\n        \"Add a note that Marketo example criteria are illustrative; optionally link to Marketo Smart List documentation if available in the repo.\",\n        \"Cite or reference an internal spec for WORM trace ID structure (e.g., 'See [internal doc] for WORM trace schema') or confirm it exists in the repo.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Opening paragraph: 'BrandGuard AI operates at the entry point of marketing technology stacks' \u2014 slightly abstract phrasing; 'entry point' could be plainer.\",\n        \"Phrase 'accelerates copy creation and ensures compliance at the point of generation' (final section) is slightly formulaic; reads less direct than typical Strand Wireless voice.\",\n        \"Minor: 'preserving team accountability and allowing rapid rejection' \u2014 'rapid rejection' is a bit marketing-speak; plain alternative: 'lets teams reject content quickly.'\"\n      ],\n      \"asks\": [\n        \"Rephrase opening to be more direct: e.g., 'BrandGuard AI sits where marketing platforms receive audience data; it returns brand-aligned copy with full compliance tracking.'\",\n        \"In the final Governance section, replace 'accelerates copy creation and ensures compliance' with simpler language: 'generates copy faster and checks compliance on the spot.'\",\n        \"Change 'allowing rapid rejection' to 'lets teams reject content quickly' or 'ensures content can be rejected instantly.'\"\n      ]\n    }\n  }\n}\n```"
+  },
+  "final_verifier": {
+    "passed": true,
+    "failures": []
+  },
+  "state_history": [
+    {
+      "cycle": 0,
+      "state": "DRAFTED",
+      "timestamp": "2026-05-11T22:30:19.004411+00:00",
+      "detail": {
+        "state": "DRAFTED",
+        "output_path": "docs/INTEGRATION_SURFACE.md",
+        "word_count": 673
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:30:27.466546+00:00",
+      "detail": {
+        "overall_pass": true,
+        "scores": {
+          "Specificity": 8,
+          "Evidence Trail": 7,
+          "Honest Scope": 9,
+          "Voice": 8
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "VERIFIED",
+      "timestamp": "2026-05-11T22:30:27.510900+00:00",
+      "detail": {
+        "verifier": {
+          "passed": true,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "worm_chain_verified": true
+}

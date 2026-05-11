@@ -1,0 +1,91 @@
+{
+  "doc_slug": "success_metrics",
+  "trace_id": "doc_pipeline:success_metrics:6dd1c60b-cd53-4d09-be28-1664bc58f583",
+  "final_state": "VERIFIED",
+  "cycles_used": 1,
+  "final_critique": {
+    "overall_pass": true,
+    "dimensions": {
+      "Specificity": {
+        "score": 9,
+        "issues": [],
+        "asks": [
+          "Consider adding the actual Jira project key or equivalent identifier for 'Project tracking system (Jira or equivalent)' under TTFC measurement source to make tracking fully concrete.",
+          "For 'stratified sample' references (Hallucination Rate, Policy Alignment Score), specify the stratification variables (e.g., 'stratified by content type and model variant') to make sampling methodology fully transparent."
+        ]
+      },
+      "Evidence Trail": {
+        "score": 8,
+        "issues": [
+          "Executive Summary claims 'All targets reflect pre-MVP positioning' but does not cite where pre-MVP positioning is defined or documented; no source reference for this framing.",
+          "Current baselines for Gate Latency (1,200 ms) and TTFC (35-45 days) are stated as author-asserted without source citations; unclear whether these come from telemetry or estimates."
+        ],
+        "asks": [
+          "Add a reference or appendix link to the pre-MVP positioning document that grounds the baseline assumptions.",
+          "Cite the measurement or log source for current baselines; if these are estimates from prior cycles, label them explicitly as 'estimated from prior process data' rather than observed telemetry."
+        ]
+      },
+      "Honest Scope": {
+        "score": 8,
+        "issues": [
+          "The doc does not state whether these metrics apply to all BrandGuard customers or only certain tiers/geographies; scope of applicability is implied but not declared."
+        ],
+        "asks": [
+          "Add a scope section stating: 'These metrics apply to [specific customer segments/geographies/tiers]. Metrics X, Y, Z are pre-MVP only and will be retired post-launch.'",
+          "Clarify whether lagging indicators are tracked for all activated partners or a cohort sample; current language ('eligible brand partners') is slightly vague."
+        ]
+      },
+      "Voice": {
+        "score": 9,
+        "issues": [],
+        "asks": [
+          "Minor: 'Vanity metrics are explicitly excluded' in the Executive Summary reads slightly formal; consider 'We exclude vanity metrics' or 'No vanity metrics' to match plainer Strand voice.",
+          "Consider shortening 'Percentage of eligible brand partners who have activated and used BrandGuard at least once' to 'Percentage of activated brand partners using BrandGuard' for directness."
+        ]
+      }
+    },
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": [\n        \"Consider adding the actual Jira project key or equivalent identifier for 'Project tracking system (Jira or equivalent)' under TTFC measurement source to make tracking fully concrete.\",\n        \"For 'stratified sample' references (Hallucination Rate, Policy Alignment Score), specify the stratification variables (e.g., 'stratified by content type and model variant') to make sampling methodology fully transparent.\"\n      ]\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Executive Summary claims 'All targets reflect pre-MVP positioning' but does not cite where pre-MVP positioning is defined or documented; no source reference for this framing.\",\n        \"Current baselines for Gate Latency (1,200 ms) and TTFC (35-45 days) are stated as author-asserted without source citations; unclear whether these come from telemetry or estimates.\"\n      ],\n      \"asks\": [\n        \"Add a reference or appendix link to the pre-MVP positioning document that grounds the baseline assumptions.\",\n        \"Cite the measurement or log source for current baselines; if these are estimates from prior cycles, label them explicitly as 'estimated from prior process data' rather than observed telemetry.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 8,\n      \"issues\": [\n        \"The doc does not state whether these metrics apply to all BrandGuard customers or only certain tiers/geographies; scope of applicability is implied but not declared.\"\n      ],\n      \"asks\": [\n        \"Add a scope section stating: 'These metrics apply to [specific customer segments/geographies/tiers]. Metrics X, Y, Z are pre-MVP only and will be retired post-launch.'\",\n        \"Clarify whether lagging indicators are tracked for all activated partners or a cohort sample; current language ('eligible brand partners') is slightly vague.\"\n      ]\n    },\n    \"Voice\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": [\n        \"Minor: 'Vanity metrics are explicitly excluded' in the Executive Summary reads slightly formal; consider 'We exclude vanity metrics' or 'No vanity metrics' to match plainer Strand voice.\",\n        \"Consider shortening 'Percentage of eligible brand partners who have activated and used BrandGuard at least once' to 'Percentage of activated brand partners using BrandGuard' for directness.\"\n      ]\n    }\n  }\n}\n```"
+  },
+  "final_verifier": {
+    "passed": true,
+    "failures": []
+  },
+  "state_history": [
+    {
+      "cycle": 0,
+      "state": "DRAFTED",
+      "timestamp": "2026-05-11T22:35:46.697353+00:00",
+      "detail": {
+        "state": "DRAFTED",
+        "output_path": "docs/SUCCESS_METRICS.md",
+        "word_count": 910
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:35:53.896907+00:00",
+      "detail": {
+        "overall_pass": true,
+        "scores": {
+          "Specificity": 9,
+          "Evidence Trail": 8,
+          "Honest Scope": 8,
+          "Voice": 9
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "VERIFIED",
+      "timestamp": "2026-05-11T22:35:53.939680+00:00",
+      "detail": {
+        "verifier": {
+          "passed": true,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "worm_chain_verified": true
+}

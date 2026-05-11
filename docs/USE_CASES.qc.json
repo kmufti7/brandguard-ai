@@ -1,0 +1,110 @@
+{
+  "doc_slug": "use_cases",
+  "trace_id": "doc_pipeline:use_cases:4f41db79-9be8-435d-9d97-b631917ef065",
+  "final_state": "VERIFIED",
+  "cycles_used": 2,
+  "final_critique": {
+    "overall_pass": true,
+    "dimensions": {
+      "Specificity": {
+        "score": 9,
+        "issues": [],
+        "asks": []
+      },
+      "Evidence Trail": {
+        "score": 8,
+        "issues": [
+          "Use Case 2 cites 'Strand's Billing Policy (Section 3.1: Autopay Terms)' but provides no link or reference to verify this policy exists; internal reference only.",
+          "Use Case 2 states 'Strand's prior 3-month email performance: 2.8% opt-out rate post-disclosure' without source attribution or methodology; unclear if this is empirical data or projection."
+        ],
+        "asks": [
+          "Add a footnote or appendix linking to internal policy documents cited (e.g., Billing Policy, Service Agreement sections) or clarify which are internal-only vs. public.",
+          "For the 2.8% opt-out benchmark, specify whether this is observed historical data or a model assumption, and cite the data source."
+        ]
+      },
+      "Honest Scope": {
+        "score": 9,
+        "issues": [],
+        "asks": []
+      },
+      "Voice": {
+        "score": 8,
+        "issues": [
+          "Use Case 1, paragraph 3: 'The Citation Agent queries Strand's network performance database and identifies supporting speed test data...' reads slightly procedural; could be more direct about what happened.",
+          "Use Case 4, 'Expected Outcome' section: 'The team has three options: (a) reduce the reach...' introduces a prescriptive tone that drifts slightly toward consulting advice rather than describing BrandGuard's function."
+        ],
+        "asks": [
+          "Simplify 'The Citation Agent queries...' to 'BrandGuard checked Strand's network performance database and found speed test data...' for directness.",
+          "Reframe the three options as 'BrandGuard surfaces three paths forward:' to keep focus on what the system enables, not what the team should do."
+        ]
+      }
+    },
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Use Case 2 cites 'Strand's Billing Policy (Section 3.1: Autopay Terms)' but provides no link or reference to verify this policy exists; internal reference only.\",\n        \"Use Case 2 states 'Strand's prior 3-month email performance: 2.8% opt-out rate post-disclosure' without source attribution or methodology; unclear if this is empirical data or projection.\"\n      ],\n      \"asks\": [\n        \"Add a footnote or appendix linking to internal policy documents cited (e.g., Billing Policy, Service Agreement sections) or clarify which are internal-only vs. public.\",\n        \"For the 2.8% opt-out benchmark, specify whether this is observed historical data or a model assumption, and cite the data source.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Use Case 1, paragraph 3: 'The Citation Agent queries Strand's network performance database and identifies supporting speed test data...' reads slightly procedural; could be more direct about what happened.\",\n        \"Use Case 4, 'Expected Outcome' section: 'The team has three options: (a) reduce the reach...' introduces a prescriptive tone that drifts slightly toward consulting advice rather than describing BrandGuard's function.\"\n      ],\n      \"asks\": [\n        \"Simplify 'The Citation Agent queries...' to 'BrandGuard checked Strand's network performance database and found speed test data...' for directness.\",\n        \"Reframe the three options as 'BrandGuard surfaces three paths forward:' to keep focus on what the system enables, not what the team should do.\"\n      ]\n    }\n  }\n}\n```"
+  },
+  "final_verifier": {
+    "passed": true,
+    "failures": []
+  },
+  "state_history": [
+    {
+      "cycle": 0,
+      "state": "DRAFTED",
+      "timestamp": "2026-05-11T22:26:42.199881+00:00",
+      "detail": {
+        "state": "DRAFTED",
+        "output_path": "docs/USE_CASES.md",
+        "word_count": 1344
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:26:50.214297+00:00",
+      "detail": {
+        "overall_pass": false,
+        "scores": {
+          "Specificity": 9,
+          "Evidence Trail": 6,
+          "Honest Scope": 8,
+          "Voice": 8
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "REVISED",
+      "timestamp": "2026-05-11T22:27:23.352682+00:00",
+      "detail": {
+        "state": "REVISED",
+        "output_path": "docs/USE_CASES.md",
+        "word_count": 1639
+      }
+    },
+    {
+      "cycle": 2,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:27:28.955195+00:00",
+      "detail": {
+        "overall_pass": true,
+        "scores": {
+          "Specificity": 9,
+          "Evidence Trail": 8,
+          "Honest Scope": 9,
+          "Voice": 8
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "state": "VERIFIED",
+      "timestamp": "2026-05-11T22:27:29.000671+00:00",
+      "detail": {
+        "verifier": {
+          "passed": true,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "worm_chain_verified": true
+}

@@ -1,0 +1,102 @@
+{
+  "doc_slug": "mlops_playbook",
+  "trace_id": "doc_pipeline:mlops_playbook:897d813b-6f24-4b90-b9d5-f1441f90066b",
+  "final_state": "VERIFIED",
+  "cycles_used": 1,
+  "final_critique": {
+    "overall_pass": true,
+    "dimensions": {
+      "Specificity": {
+        "score": 8,
+        "issues": [
+          "Line: 'typically 2 percentage points below the baseline score' \u2014 unclear whether this tolerance band is configurable per model or fixed across all deployments.",
+          "Line: 'A reviewer, typically a brand manager or ML lead, examines 20 random model outputs' \u2014 no detail on how the 20 outputs are sampled (stratified by intent? random? by confidence score?).",
+          "Line: 'Strand Wireless maintains a rotation of 3 reviewers' \u2014 scope unclear; does this apply to all managed brands or only Strand Wireless?"
+        ],
+        "asks": [
+          "Specify whether the 2 percentage point tolerance is a global default or configurable in brand configuration files (e.g., [file:data/brand_config.yaml]).",
+          "Document the sampling strategy for the 20 review outputs (e.g., 'stratified random sample across intent categories' or 'drawn from lowest-confidence outputs').",
+          "Clarify reviewer rotation scope: state explicitly whether the 3-reviewer model applies to all managed brands or is Strand Wireless\u2013specific."
+        ]
+      },
+      "Evidence Trail": {
+        "score": 9,
+        "issues": [
+          "Minor: Line 'The seed value 42 is committed to version control' \u2014 link to the actual commit or GitHub path would strengthen the claim, though the file reference [file:scripts/corpus_generator.py] is sufficient."
+        ],
+        "asks": [
+          "Consider adding a line reference (e.g., commit hash or release tag) to a real example of a corpus generation run in the repository to make the versioning claim more concrete."
+        ]
+      },
+      "Honest Scope": {
+        "score": 7,
+        "issues": [
+          "Line: 'This playbook documents the practices that govern model training, evaluation, and deployment for Strand Wireless and other managed brands' \u2014 the doc does not explicitly state whether it covers fine-tuning vs. base model training, or multi-model ensembles.",
+          "Line: 'The evaluation harness runs daily, or more frequently if content or brand voice has been updated' \u2014 doc does not state what happens if the harness detects drift but human reviewers are unavailable (SLA? escalation path?).",
+          "The playbook does not cover failure recovery, rollback procedures beyond the canary stage, or incident post-mortems."
+        ],
+        "asks": [
+          "Add a brief 'Out of Scope' section naming what the playbook does NOT cover (e.g., 'base model pre-training, multi-model ensemble strategies, incident post-mortem procedures').",
+          "Specify the escalation path and SLA when drift is detected below the tolerance band but no reviewer is available.",
+          "Consider a short 'Rollback & Recovery' paragraph documenting what happens if a canary deployment detects divergence or if a production model fails drift checks after full rollout."
+        ]
+      },
+      "Voice": {
+        "score": 8,
+        "issues": [
+          "Line: 'BrandGuard AI operates under a disciplined MLOps framework' \u2014 'disciplined' is slightly editorial; Strand Wireless brand voice tends to favor 'controlled' or 'verifiable' over value-laden adjectives.",
+          "Line: 'This playbook documents the practices that govern' \u2014 reads formal; could be more direct (e.g., 'This playbook shows how we...').",
+          "Overall tone is clear and numbers-first (which is on-brand), but opening paragraph drifts slightly toward process documentation rather than outcome-focused explanation."
+        ],
+        "asks": [
+          "Replace 'disciplined MLOps framework' with 'controlled MLOps framework' or 'reproducible MLOps approach' to align with Strand Wireless's preference for verifiable claims over process adjectives.",
+          "Shorten the opening sentence: 'BrandGuard AI ensures marketing content stays true to brand identity and factual accuracy through controlled model training, evaluation, and deployment' (removes 'operates under').",
+          "Consider rephrasing 'This playbook documents the practices' to 'This playbook shows how we' to match Strand Wireless's direct, action-oriented voice."
+        ]
+      }
+    },
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line: 'typically 2 percentage points below the baseline score' \u2014 unclear whether this tolerance band is configurable per model or fixed across all deployments.\",\n        \"Line: 'A reviewer, typically a brand manager or ML lead, examines 20 random model outputs' \u2014 no detail on how the 20 outputs are sampled (stratified by intent? random? by confidence score?).\",\n        \"Line: 'Strand Wireless maintains a rotation of 3 reviewers' \u2014 scope unclear; does this apply to all managed brands or only Strand Wireless?\"\n      ],\n      \"asks\": [\n        \"Specify whether the 2 percentage point tolerance is a global default or configurable in brand configuration files (e.g., [file:data/brand_config.yaml]).\",\n        \"Document the sampling strategy for the 20 review outputs (e.g., 'stratified random sample across intent categories' or 'drawn from lowest-confidence outputs').\",\n        \"Clarify reviewer rotation scope: state explicitly whether the 3-reviewer model applies to all managed brands or is Strand Wireless\u2013specific.\"\n      ]\n    },\n    \"Evidence Trail\": {\n      \"score\": 9,\n      \"issues\": [\n        \"Minor: Line 'The seed value 42 is committed to version control' \u2014 link to the actual commit or GitHub path would strengthen the claim, though the file reference [file:scripts/corpus_generator.py] is sufficient.\"\n      ],\n      \"asks\": [\n        \"Consider adding a line reference (e.g., commit hash or release tag) to a real example of a corpus generation run in the repository to make the versioning claim more concrete.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 7,\n      \"issues\": [\n        \"Line: 'This playbook documents the practices that govern model training, evaluation, and deployment for Strand Wireless and other managed brands' \u2014 the doc does not explicitly state whether it covers fine-tuning vs. base model training, or multi-model ensembles.\",\n        \"Line: 'The evaluation harness runs daily, or more frequently if content or brand voice has been updated' \u2014 doc does not state what happens if the harness detects drift but human reviewers are unavailable (SLA? escalation path?).\",\n        \"The playbook does not cover failure recovery, rollback procedures beyond the canary stage, or incident post-mortems.\"\n      ],\n      \"asks\": [\n        \"Add a brief 'Out of Scope' section naming what the playbook does NOT cover (e.g., 'base model pre-training, multi-model ensemble strategies, incident post-mortem procedures').\",\n        \"Specify the escalation path and SLA when drift is detected below the tolerance band but no reviewer is available.\",\n        \"Consider a short 'Rollback & Recovery' paragraph documenting what happens if a canary deployment detects divergence or if a production model fails drift checks after full rollout.\"\n      ]\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line: 'BrandGuard AI operates under a disciplined MLOps framework' \u2014 'disciplined' is slightly editorial; Strand Wireless brand voice tends to favor 'controlled' or 'verifiable' over value-laden adjectives.\",\n        \"Line: 'This playbook documents the practices that govern' \u2014 reads formal; could be more direct (e.g., 'This playbook shows how we...').\",\n        \"Overall tone is clear and numbers-first (which is on-brand), but opening paragraph drifts slightly toward process documentation rather than outcome-focused explanation.\"\n      ],\n      \"asks\": [\n        \"Replace 'disciplined MLOps framework' with 'controlled MLOps framework' or 'reproducible MLOps approach' to align with Strand Wireless's preference for verifiable claims over process adjectives.\",\n        \"Shorten the opening sentence: 'BrandGuard AI ensures marketing content stays true to brand identity and factual accuracy through controlled model training, evaluation, and deployment' (removes 'operates under').\",\n        \"Consider rephrasing 'This playbook documents the practices' to 'This playbook shows how we' to match Strand Wireless's direct, action-oriented voice.\"\n      ]\n    }\n  }\n}\n```"
+  },
+  "final_verifier": {
+    "passed": true,
+    "failures": []
+  },
+  "state_history": [
+    {
+      "cycle": 0,
+      "state": "DRAFTED",
+      "timestamp": "2026-05-11T22:30:42.710965+00:00",
+      "detail": {
+        "state": "DRAFTED",
+        "output_path": "docs/MLOPS_PLAYBOOK.md",
+        "word_count": 801
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-11T22:30:52.993565+00:00",
+      "detail": {
+        "overall_pass": true,
+        "scores": {
+          "Specificity": 8,
+          "Evidence Trail": 9,
+          "Honest Scope": 7,
+          "Voice": 8
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "VERIFIED",
+      "timestamp": "2026-05-11T22:30:53.038104+00:00",
+      "detail": {
+        "verifier": {
+          "passed": true,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "worm_chain_verified": true
+}

@@ -51,3 +51,10 @@ eval_output/
 brandguard_worm*.db
 brandguard_worm*.db-wal
 brandguard_worm*.db-shm
+
+# Per-cycle Critic JSON outputs are transient pipeline state. The final
+# critique is embedded in each doc's .qc.json sidecar (committed).
+docs/_qc/*.critique.*.json
+
+# Failed-run artifacts are not committed (per the doc QC pipeline spec).
+docs/_qc/failed/

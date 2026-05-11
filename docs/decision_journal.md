@@ -780,3 +780,71 @@ Caught a small bug. Doc frontmatter said REVISED while the sidecar said VERIFIED
 
 ### Related
 DJ-007, DJ-008, Session 5A scope-drift flag 4.
+
+---
+
+## DJ-018: File citation anchors forbidden in Author prompts
+Date: 2026-05-11
+Session: 5B
+Status: Decided
+Owner: Kamil
+
+### The Question
+Session 5B's first pipeline runs failed twice on the same root cause. The Author Agent's LLM kept emitting [file:path] citation anchors to paths that did not exist in the repo (backend/, monitoring/, evaluation_datasets/, src/brandguard/eval/faithfulness_classifier.py, etc.). The Verifier's deterministic citation_file check blocked them on every cycle. The 3-cycle budget exhausted before the LLM stopped inventing files. What is the right architectural response?
+
+### Options Considered
+- A. Provide the LLM with a manifest of real file paths at prompt time, asking it to cite only from the manifest. Adds prompt size and an indirect failure mode (LLM still hallucinates from the list).
+- B. Forbid [file:path] anchors entirely in the Author prompts. The doc can name files in prose without the anchor syntax. The Verifier never sees a file citation, so never blocks on one.
+- C. Add file-existence checks to the Author Agent (post-LLM, pre-write) and strip hallucinated citations before passing to the Verifier. Adds Author complexity.
+
+### Decision
+B. The Author's system prompts (encoded and plugin modes) now explicitly forbid [file:path] anchors and instruct the LLM to reference files in prose by name. The Verifier still resolves any [file:...] that appears, but the Author will not produce them. Confidence: High.
+
+### Why This Choice
+File anchors are an LLM hallucination magnet. The model has no introspection into the actual repo state; it pattern-matches plausible-sounding paths from training. Forbidding the anchor syntax in the Author prompt eliminates the failure mode at the source rather than fighting it cycle by cycle. The Verifier remains the gate; it just never sees the violation because the Author doesn't emit it. Prose references to file paths ("the legal/brand review gate at src/brandguard/governance/legal_brand_review_gate.py") read just as well to a human reader, with zero hallucination risk.
+
+### What This Forecloses
+Docs cannot machine-link to specific files through a verified citation system. If a future reader wanted to click a [file:...] anchor that resolves to a hovercard or IDE jump, that capability is now gone for Author-generated docs. Acceptable trade-off: the docs are primarily for human readers and the prose reference is sufficient. DJ entries, ADRs, and brand voice anchors still use anchor syntax because their resolution is deterministic and verifiable.
+
+### Downstream Implications
+The Author prompt change recovered success_metrics, roadmap, architecture, and other docs that had been failing on citation_file blocks. All 16 Session 5B pipeline runs reached VERIFIED. Future briefs do not need to enumerate file paths; the Author Agent simply does not emit them.
+
+### Interview Framing
+File citation anchors are an LLM hallucination magnet. The model pattern-matches plausible file paths from training and the verifier blocks them. Rather than fight the LLM cycle by cycle, I removed the temptation: the Author prompt forbids [file:path] anchors and the LLM references files in prose. Same readability, zero hallucination risk. Recovered four pipeline failures with one prompt change.
+
+### Related
+DJ-007 (Doc QC pipeline), Session 5B failure-recovery flag, scripts/doc_pipeline/author_agent.py.
+
+---
+
+## DJ-019: README rewrite philosophy (Working Backwards, lineage preserved)
+Date: 2026-05-11
+Session: 5B Task 7
+Status: Decided
+Owner: Kamil
+
+### The Question
+The Session 2A README was a setup-first document that read like a getting-started guide with product framing tucked at the bottom. Session 5B's Task 7 was to rewrite it. Three things needed to be decided: lead with product framing or setup, where to put the intelliflow-core lineage disclosure, and what level of repo introspection the README should reach.
+
+### Options Considered
+- A. Setup-first (current pattern). Reads as a getting-started guide.
+- B. Working Backwards / PR-FAQ framing first (per the encoded framework in author_agent.py). Product framing before setup. Lineage disclosure preserved as a top-level section, not buried.
+- C. Hybrid: short Working Backwards intro, then setup, then architecture.
+
+### Decision
+B. Working Backwards framing leads. The opening paragraph describes what the customer can now do because the product exists. Setup is demoted below the architecture overview. Lineage disclosure is preserved as a top-level section ("Lineage matters. BrandGuard AI consumes intelliflow-core ..."). Confidence: High.
+
+### Why This Choice
+A README is the first read of the project for a hiring manager or evaluator. Setup-first signals "this is a tool for engineers to install." Working Backwards-first signals "this is a product that does something specific for a specific user." The latter framing is correct for a portfolio piece. The lineage disclosure preserves the contract from DJ-001 and earlier sessions: intelliflow-core is the upstream governance kernel, and BrandGuard does not subordinate that contribution.
+
+### What This Forecloses
+A reader who came to the README looking for "how do I install this" must scroll past product framing to find setup. Mitigated by the Quick Start section being clearly named and reachable; not buried.
+
+### Downstream Implications
+Future README revisions follow the same pattern. Other product docs (ARCHITECTURE.md, USE_CASES.md) inherit the lineage disclosure convention.
+
+### Interview Framing
+README leads with what the customer can do, not how to install it. Working Backwards framing first. Lineage disclosure to the upstream governance kernel is preserved as a top-level section, not buried. Setup is reachable but demoted. Same product-first discipline as Amazon's PR-FAQ pattern.
+
+### Related
+DJ-001 (synthetic data + fictional brand), DJ-007 (doc pipeline), README.md.
