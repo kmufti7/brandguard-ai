@@ -1,6 +1,6 @@
 ---
 state: VERIFIED
-timestamp: 2026-05-11T22:36:52.142980+00:00
+timestamp: 2026-05-12T00:09:00.966391+00:00
 brief: scripts/doc_pipeline/briefs/readme.brief.md
 mode: encoded
 plugin_command: 
@@ -12,120 +12,95 @@ word_count_floor: 800
 
 ## Product Overview
 
-Marketing teams at Strand Wireless can now deploy governed AI agents that enforce brand compliance rules in real time, before marketing content reaches customers. A marketer writes copy, uploads an image, or proposes a campaign, and BrandGuard AI returns a compliance decision within milliseconds: approved, rejected, or flagged for human review. The system applies legal guardrails, brand voice standards, regulatory rules, and fact-sheet accuracy constraints to every asset, eliminating the delays of manual review cycles while preserving human judgment where it matters most.
+You can now describe your audience in plain English, and BrandGuard AI will segment it from a 500-record synthetic customer database, generate campaign copy with mandatory source citations, route it through a deterministic legal and brand review gate, and produce a tamper-evident audit trail of every decision. No guesswork. No unsigned claims. A marketer types "Active business customers in Texas with annual revenue over $2M" into the Audience Discovery Agent, the system returns a filtered segment with record counts and matching criteria, feeds that segment into the RAG Copy Generation Agent along with brand voice guidelines and product fact sheets, receives draft campaign copy tagged with citations to those exact sources, submits the copy to the Legal/Brand Review Gate, and either ships it (if all citations resolve and required disclosures are present) or fails safely with a specific rejection reason. Every step writes to an append-only HMAC-SHA256-verified log. This is the first governed marketing AI product built on a deterministic review architecture instead of post-hoc auditing.
 
-BrandGuard AI achieves this through a four-component architecture: a governance rules engine that interprets brand policy in code form; a decision journal that logs every compliance decision with full reasoning; a fact-sheet registry that anchors product claims to vetted data; and a legal review gate that intercepts content before publication. These components are built on top of the intelliflow-core governance kernel, an open-source library that provides deterministic policy evaluation, audit trails, and appeal workflows. BrandGuard AI does not subordinate that upstream contribution. Instead, it extends intelliflow-core with marketing-specific rule schemas, guardrails tuned for telecom regulation, and Strand Wireless brand voice enforcement. The result is a system that speaks in Strand's authentic voice, respects legal boundaries, and gives compliance teams verifiable proof of every decision.
+## How It Works: Four Native Components
 
-Lineage matters. BrandGuard AI consumes intelliflow-core (available at github.com/kaizen-works/intelliflow-core) as its governance kernel. That kernel was designed for deterministic rule evaluation in high-stakes domains. By reusing it, BrandGuard AI inherits proven audit capabilities, policy-as-code patterns, and cross-functional review mechanisms. This document describes the BrandGuard layer: how it wraps and extends intelliflow-core to make marketing AI compliant by default.
+**Audience Discovery Agent** extracts filter logic from natural language queries using an LLM, then applies those filters deterministically over the synthetic CRM corpus. The agent outputs segment membership with counts and decision traces so you know exactly why records matched.
 
-## Quick Start
+**RAG Copy Generation Agent** retrieves relevant sections from the brand voice documentation (data/brand_voice.md) and product fact sheets using FAISS vector retrieval, then generates campaign copy with required citations embedded. Every claim ties back to a source. The LLM cannot generate citations; it can only include retrieval results, so hallucinations are bounded by what the corpus contains.
 
-### Installation
+**Legal/Brand Review Gate** applies three deterministic rules in fail-closed mode per ADR-003. First, every citation anchor must resolve to an actual section in the sourced documents. Second, if the campaign mentions autopay, automatic renewal, or recurring charges, the copy must include the FTC-required plain-language disclosure. Third, unlimited plans must disclose data throttling thresholds if any apply. No LLM interprets these rules. A Python checker runs the validation in order and rejects the entire campaign if any rule fails, producing a specific error message so you know what to fix.
 
-Clone the repository and install dependencies:
+**Hallucination Evaluation Harness** measures faithfulness using ragas-style LLM-judged metrics (answer relevance, faithfulness scores) and three deterministic checks: citation coverage (percentage of claims with citations), citation validity (all citations resolve), and fact consistency (no contradictions between campaign text and source fact sheets). The harness runs on every generated campaign and writes results to eval_output/eval_report_llm.md.
+
+BrandGuard AI also inherits governance primitives from its upstream kernel, intelliflow-core: the WORM Logger provides cryptographic append-only storage using HMAC-SHA256 hash chains and SQLite triggers that prevent deletion or modification of audit records; the Kill-Switch Guard allows immediate circuit-breaking of unsafe LLM outputs; the Token FinOps Tracker measures and caps LLM inference costs per campaign. These upstream governance components are reused as-is, not reimplemented.
+
+The Doc QC pipeline (Author, Critic, Verifier, and Orchestrator agents) that produced this README also runs on every internal document you produce, ensuring consistency with brand voice, factual accuracy against decision records, and compliance with citation rules before publication.
+
+## Lineage Disclosure
+
+BrandGuard AI consumes intelliflow-core as its upstream governance kernel. The WORM Logger, Kill-Switch Guard, and Token FinOps Tracker components are inherited directly; BrandGuard adds four native agents and the deterministic Legal/Brand Review Gate on top. BrandGuard is a distinct product, not a module or extension of intelliflow-core. The upstream kernel provides the tamper-evidence and safety primitives; BrandGuard builds the marketing AI workflows.
+
+## Setup
+
+Requires Python 3.11 or later (3.12 used in development).
 
 ```bash
-git clone https://github.com/kaizen-works/brandguard-ai.git
-cd brandguard-ai
-pip install -e .
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ../intelliflow-core
+pip install -e .[dev]
+pytest -q
 ```
 
-BrandGuard AI requires Python 3.9+. It integrates with intelliflow-core 1.2.0 or later.
+The `[dev]` extra includes pytest, ragas, FAISS, and documentation dependencies. The intelliflow-core package must be installed first so that governance imports resolve correctly.
 
-### First Decision
-
-Create a simple brand policy rule and run a compliance check:
+## Quick Example
 
 ```python
-from brandguard.governance import BrandPolicy
-from brandguard.engine import ComplianceEngine
+from brandguard.workflow import run_workflow
 
-policy = BrandPolicy(
-    brand_voice_section=1,
-    legal_precedents=["DJ-001", "DJ-003"],
-    fact_sheet_registry={"wireless_plan_unlimited": "fact_sheet:wireless_plan_unlimited:speed_limit"}
+result = run_workflow(
+    audience_query="Active business customers in Texas with annual revenue over $2M",
+    campaign_brief="Q2 enterprise promotion for Unlimited+ plan"
 )
 
-engine = ComplianceEngine(policy=policy)
-decision = engine.evaluate(
-    content="Get unlimited data on the fastest 5G network.",
-    content_type="marketing_copy"
-)
-
-print(decision.status)  # "approved", "rejected", or "review_required"
-print(decision.reasoning)
+print(result.audience_segment)      # List of matching CRM records
+print(result.generated_copy)        # Brand-safe campaign text with citations
+print(result.review_gate_decision)  # APPROVED or REJECTED with reason
+print(result.audit_log_hash)        # HMAC-SHA256 chain hash for this run
 ```
 
-The `ComplianceEngine` returns a structured decision object. All decisions are logged to the decision journal (in `docs/decision_journal.md`) for audit purposes.
+The `run_workflow` function in src/brandguard/workflow.py orchestrates the four agents in sequence. It returns a result object containing the segment, the copy, the gate decision, and the cryptographic log hash. If the review gate rejects the copy, the decision field includes the rule that failed and the missing or invalid citation.
 
-### Configuration
+## How To Read The Evaluation Evidence
 
-Brand policies live in `src/brandguard/policies/`. Each policy file maps compliance rules to specific brand domains: voice, legal, regulatory, and product accuracy. See the product documentation map below for detailed rule syntax.
+Two reports document product behavior:
 
-## Architecture
+- **docs/eval_report_deterministic.md** contains committed, reproducible results: citation validity rates, disclosure detection accuracy, and deterministic metric scores. This file is stable across commits.
+- **eval_output/eval_report_llm.md** is regenerated each time you run the evaluation suite. It contains ragas-style LLM-judged faithfulness and relevance scores. This file is gitignored because LLM outputs vary slightly.
 
-BrandGuard AI consists of four components:
-
-1. **Governance Rules Engine** (src/brandguard/governance/)
-   - Interprets brand policy as executable rules
-   - Evaluates content against Strand Wireless voice standards
-   - Enforces legal and regulatory constraints
-   - Returns deterministic compliance decisions
-
-2. **Decision Journal** (docs/decision_journal.md)
-   - Immutable log of all compliance decisions
-   - Includes decision rationale, timestamp, and policy version
-   - Supports post-hoc audit and appeal workflows
-   - Currently contains 17 entries (DJ-001 through DJ-017)
-
-3. **Fact-Sheet Registry** (src/brandguard/registry/)
-   - Maps product claims to vetted marketing facts
-   - Prevents over-claim and ensures consistency
-   - Integrated with legal review gate to validate product statements
-   - Sources data from Strand Wireless fact sheets
-
-4. **Legal Review Gate** (src/brandguard/governance/legal_brand_review_gate.py)
-   - Intercepts content before publication
-   - Escalates claims that require legal sign-off
-   - Routes ambiguous decisions to human reviewers
-   - Maintains chain of custody for compliant assets
-
-These components are implemented on top of intelliflow-core, which provides the underlying deterministic policy engine, audit trail mechanisms, and appeal infrastructure.
-
-## Brand Voice Integration
-
-BrandGuard AI enforces Strand Wireless brand voice during every compliance decision. The brand voice guide (data/brand_voice.md) defines seven sections covering tone, vocabulary, visual principles, technical accuracy, and regulatory candor. When a marketer submits content, the compliance engine measures conformance to these sections and either approves the asset, suggests revisions, or flags it for human review.
-
-Example: A proposed email campaign uses the phrase "unleash your connectivity." The governance rules engine consults section 2 of the brand voice guide and identifies that "unleash" violates Strand's commitment to plain English and specificity. The engine rejects the asset and suggests: "Experience reliably fast 5G speeds, measured in Mbps, not metaphors."
-
-## Contributing
-
-Contributors should understand the governance framework before modifying rules or adding new policy types.
-
-1. Read `docs/README_PRODUCT.md` for product architecture and user flows
-2. Read `docs/README_ENGINEERING.md` for contributor guide, testing patterns, and dependency graph
-3. Review existing decision journal entries (DJ-001 through DJ-017) to understand precedent
-4. Add new rules to the appropriate policy file in src/brandguard/policies/
-5. Write tests in tests/ that validate rule behavior against realistic marketing scenarios
-6. Submit a pull request with a justification that references relevant decision journal entries or architectural records (ADR-001 through ADR-004)
-
-All contributions must preserve the lineage to intelliflow-core and maintain audit trail integrity.
+Run `pytest src/brandguard/eval/ -q` to regenerate the LLM report. Start with the deterministic report to understand baseline guarantees, then read the LLM report to see production hallucination metrics.
 
 ## Documentation Map
 
-**Product Documentation:**
-- `docs/README_PRODUCT.md`: User workflows, API reference, example policies
+**Product Documentation**
 
-**Engineering Documentation:**
-- `docs/README_ENGINEERING.md`: Architecture deep-dive, contributor guide, testing, dependency tree
+- docs/PRODUCT_OVERVIEW.md: Feature summary and value proposition.
+- docs/USER_PERSONAS.md: Marketer, compliance officer, and product manager workflows.
+- docs/USE_CASES.md: Email campaigns, social ads, and promotion rules.
+- docs/SUCCESS_METRICS.md: How to measure adoption, safety, and campaign performance.
+- docs/ROADMAP.md: Planned features for Q2 and Q3 2026.
 
-**Governance:**
-- `docs/decision_journal.md`: All compliance decisions and policy changes (DJ-001 through DJ-017)
-- `docs/adr/`: Architectural decision records (ADR-001 through ADR-004)
+**Engineering Documentation**
 
-**Brand Voice:**
-- `data/brand_voice.md`: Seven-section Strand Wireless voice and style guide
+- docs/ARCHITECTURE.md: Detailed component design, data flow, and interface contracts.
+- docs/USAGE.md: API reference and common patterns.
+- docs/CONTRIBUTING.md: Pull request process and code review standards.
+- docs/MLOPS_PLAYBOOK.md: Model serving, retraining, and inference monitoring.
+- docs/INTEGRATION_SURFACE.md: How to connect BrandGuard to your CRM and approval systems.
+
+**Governance Documentation**
+
+- docs/decision_journal.md: Append-only Decision Journal with 17+ entries documenting design choices, trade-offs, and reviewed assumptions.
+- docs/adr/: Architecture Decision Records ADR-001 through ADR-004 covering LLM safety, determinism, and citation requirements.
+- docs/pdr/: Product Decision Records PDR-001 through PDR-004 covering feature scope and user experience choices.
+
+**Brand & Style**
+
+- data/brand_voice.md: Eight voice principles and writing style guide for Strand Wireless brand communications.
 
 ## License
 
-BrandGuard AI is copyright 2024 Kaizen Works, LLC and distributed under the Apache License 2.0. See LICENSE file for terms.
+Copyright 2026 Kaizen Works, LLC. Licensed under the Apache License, Version 2.0. See LICENSE for full terms.

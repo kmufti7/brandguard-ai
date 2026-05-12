@@ -86,3 +86,39 @@ def test_orchestrator_patches_frontmatter_state_on_verified(tmp_path: Path):
         line for line in doc.read_text().splitlines() if line.startswith("state:")
     )
     assert state_line2 == "state: VERIFIED"
+
+
+def test_verifier_blocks_missing_pdr_citation(tmp_path: Path):
+    """DJ-020: the PDR resolver was missing. A [PDR-NNN] reference to a
+    non-existent PDR must now block.
+    """
+    pdr_dir = tmp_path / "docs" / "pdr"
+    pdr_dir.mkdir(parents=True)
+    (pdr_dir / "PDR-001.md").write_text("# PDR-001\n", encoding="utf-8")
+
+    doc = tmp_path / "test_doc.md"
+    doc.write_text(
+        "---\nword_count_floor: 5\n---\n\n"
+        "# Test\nThis cites [PDR-001] (exists) and [PDR-999] (does not).\n",
+        encoding="utf-8",
+    )
+    result = verify(doc, BANNED, tmp_path)
+    assert result.passed is False
+    assert any(f.rule_id == "citation_pdr" for f in result.failures)
+    # The real PDR-001 reference should not be flagged.
+    assert not any("PDR-001" in f.message for f in result.failures)
+
+
+def test_verifier_blocks_dangling_prose_path(tmp_path: Path):
+    """DJ-020: prose-form backtick paths starting with a known top-dir are now
+    resolved. A path to a non-existent file must block.
+    """
+    doc = tmp_path / "test_doc.md"
+    doc.write_text(
+        "---\nword_count_floor: 5\n---\n\n"
+        "# Test\nSee `docs/nonexistent.md` for details.\n",
+        encoding="utf-8",
+    )
+    result = verify(doc, BANNED, tmp_path)
+    assert result.passed is False
+    assert any(f.rule_id == "citation_prose_path" for f in result.failures)

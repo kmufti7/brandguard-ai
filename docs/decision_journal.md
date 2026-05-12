@@ -848,3 +848,71 @@ README leads with what the customer can do, not how to install it. Working Backw
 
 ### Related
 DJ-001 (synthetic data + fictional brand), DJ-007 (doc pipeline), README.md.
+
+---
+
+## DJ-020: Verifier coverage gaps from DJ-018 fallback and missing PDR resolver
+Date: 2026-05-10
+Session: 5B (discovered), 6 Task 0 (fixed)
+Status: Decided
+Owner: Kamil
+
+### The Question
+DJ-018 banned [file:path] citation anchors from Author prompts because the LLM kept hallucinating them; the fallback was prose backtick-paths like `docs/foo.md`. This works for hallucination prevention but bypasses the Verifier's citation_file check, which only matches the structured form. Separately, the Verifier defines a PDR citation pattern in _CITATION_PATTERNS["pdr"] but has no resolver loop in _check_citations. Together these are two coverage gaps. Should we fix them both, fix one, or accept them?
+
+### Options Considered
+- A. Fix both. Add a prose-path resolver to _check_citations (parse backtick paths, check existence). Add the missing PDR resolver loop.
+- B. Fix only the PDR resolver (clear bug); document the prose-path gap as accepted trade-off in DJ-018.
+- C. Re-allow [file:path] anchors in Author prompts; rely on the Critic to catch hallucinations.
+
+### Decision
+A. Fix both. Confidence: High.
+
+### Why This Choice
+The Verifier's purpose is to catch what the Critic and Author miss. A coverage gap defeats the purpose. The PDR resolver is a literal bug (pattern defined, no enforcement); the prose-path gap is structural but small to close (regex for paths in backticks, check repo-root existence). Cheap; full coverage restored.
+
+### What This Forecloses
+The prose-path resolver may produce false positives if a path-shaped string appears in prose without being an actual reference. Mitigation: only match paths that look like real repo paths (start with known top-level dirs: docs/, src/, scripts/, tests/, data/).
+
+### Downstream Implications
+README's dangling docs/README_PRODUCT.md and docs/README_ENGINEERING.md would have been caught at commit time. README either needs those files created or the references rewritten to point at the docs that do exist (ARCHITECTURE.md, USAGE.md). Decided in Session 6 Task 0.
+
+### Interview Framing
+Caught a coverage gap in our own Verifier. DJ-018 banned structured file citations to stop the LLM hallucinating paths; the fallback (prose backticks) was not being verified. Plus the PDR resolver was missing entirely. Both fixed in one pass. The pipeline now catches what it was designed to catch.
+
+### Related
+DJ-007, DJ-018, Session 5B README rewrite, Session 6 Task 0.
+
+---
+
+## DJ-021: Max-cycles raised from 3 to 5 for long-form docs in Session 5B
+Date: 2026-05-10
+Session: 5B (decided), 6 Task 0 (backfilled commit)
+Status: Decided
+Owner: Kamil
+
+### The Question
+Session 5A established a 3-cycle ceiling per doc through the Doc QC pipeline (DRAFTED -> CRITIQUED -> REVISED -> CRITIQUED -> ... -> VERIFIED or FAILED after 3). Session 5B encountered ARCHITECTURE.md (1200-word floor) and data/CHANGELOG.md (300-word floor) failing at 3 cycles when the Critic kept finding new asks per revision. CC raised the cycle limit to 5 mid-session to land them. Was that the right call, and should the new limit stand?
+
+### Options Considered
+- A. Keep 3-cycle limit; force the rubrics to be looser if a doc cannot pass in 3.
+- B. Raise to 5 cycles permanently for all docs; longer docs need more revision room.
+- C. Raise to 5 cycles only for docs with word floors >= 1000; keep 3 for shorter docs.
+
+### Decision
+B. 5-cycle ceiling permanently for all docs. Confidence: Medium-High.
+
+### Why This Choice
+The original 3-cycle limit was a guess, not a measurement. After running 16 docs through the pipeline, evidence shows: 11 of 16 reached VERIFIED in 1-2 cycles, 4 needed 2-3 cycles, 1 (data/CHANGELOG.md) needed 4. None of the 16 took 5 cycles. A 5-cycle ceiling gives long-form docs the revision room they need without inviting endless revision spirals. The rubrics did not need loosening; the pipeline just needed slightly more headroom.
+
+### What This Forecloses
+A 5-cycle limit means a maximally bad first draft can burn 5 API calls per agent (Author + Critic) before failing. Slightly higher cost per FAILED doc. Acceptable given the 1-in-16 utilization rate observed in 5B; if a future session sees most docs taking 4-5 cycles, that is a signal to investigate the rubrics or briefs, not raise the limit further.
+
+### Downstream Implications
+orchestrator.py max_cycles default updated from 3 to 5. The "max 3 cycles" mention in DJ-007 is now historically true but operationally superseded. README and ARCHITECTURE.md docs that describe the pipeline should reflect the 5-cycle ceiling. P23 backfill: should have flagged this as a decision the same session it was made; folded into Session 6 Task 0.
+
+### Interview Framing
+Original spec was 3 cycles max. Ran 16 docs through the pipeline; the longest-form ones needed 4 cycles. Raised to 5 with the data backing the call: nothing took 5, but 1200-word docs need more headroom than I originally guessed.
+
+### Related
+DJ-007, Session 5B Log architectural deltas, P23.

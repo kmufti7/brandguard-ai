@@ -50,7 +50,9 @@ from scripts.doc_pipeline.verifier import verify
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BANNED_PHRASES_PATH = REPO_ROOT / "scripts" / "doc_pipeline" / "banned_phrases.txt"
 DEFAULT_WORM_DB = str(REPO_ROOT / "brandguard_worm.db")
-MAX_CYCLES = 3
+MAX_CYCLES = (
+    5  # DJ-021: raised from 3 after Session 5B; long-form docs need the headroom.
+)
 
 
 def _patch_frontmatter_state(doc_path: Path, new_state: str) -> None:

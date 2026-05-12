@@ -50,6 +50,11 @@ _CITATION_PATTERNS = {
 # Inline doc-to-doc markdown links of the form (path/to/X.md).
 _MD_LINK = re.compile(r"\]\(([^)#]+\.md)(?:#[^)]+)?\)")
 
+# Prose-form file paths: backtick-quoted, starting with a known top-level dir.
+# DJ-018 banned [file:...] anchors; the fallback is prose backtick-paths, which
+# this resolver covers (DJ-020).
+_PROSE_PATH_PATTERN = re.compile(r"`((?:docs|src|scripts|tests|data)/[^`\s]+)`")
+
 
 @dataclass
 class VerifierFailure:
@@ -183,6 +188,37 @@ def _check_citations(
                         message=f"ADR-{num} not found in docs/adr/",
                     )
                 )
+
+    # PDR citations (DJ-020: resolver was missing).
+    pdr_dir = repo_root / "docs" / "pdr"
+    if pdr_dir.exists():
+        pdr_files = list(pdr_dir.glob("PDR-*.md"))
+        pdr_numbers = {f.name.split("-")[1].split(".")[0] for f in pdr_files}
+        for m in _CITATION_PATTERNS["pdr"].finditer(text):
+            num = m.group(1)
+            if num not in pdr_numbers:
+                line = text[: m.start()].count("\n") + 1
+                failures.append(
+                    VerifierFailure(
+                        rule_id="citation_pdr",
+                        line_number=line,
+                        message=f"PDR-{num} not found in docs/pdr/",
+                    )
+                )
+
+    # Prose-form file paths (backtick-quoted, starting with known top-dirs).
+    # DJ-020: covers the DJ-018 fallback (prose paths replacing [file:...] anchors).
+    for m in _PROSE_PATH_PATTERN.finditer(text):
+        rel = m.group(1).strip()
+        if not (repo_root / rel).exists():
+            line = text[: m.start()].count("\n") + 1
+            failures.append(
+                VerifierFailure(
+                    rule_id="citation_prose_path",
+                    line_number=line,
+                    message=f"prose-form path `{rel}` does not resolve",
+                )
+            )
 
     # brand_voice and fact_sheet anchors are validated by the same logic used in
     # the legal/brand gate (collect_known_anchors). Reuse if available; otherwise

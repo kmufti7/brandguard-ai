@@ -1,8 +1,8 @@
 {
   "doc_slug": "readme",
-  "trace_id": "doc_pipeline:readme:fed7afd5-d50b-4f06-94e4-58bac77e595f",
+  "trace_id": "doc_pipeline:readme:32884a7f-7449-4274-90e0-db6e74ab0a1e",
   "final_state": "VERIFIED",
-  "cycles_used": 2,
+  "cycles_used": 1,
   "final_critique": {
     "overall_pass": true,
     "dimensions": {
@@ -17,12 +17,16 @@
         "asks": []
       },
       "Lineage Disclosure Preserved": {
-        "score": 10,
-        "issues": [],
-        "asks": []
+        "score": 9,
+        "issues": [
+          "The phrasing 'inherits governance primitives from its upstream kernel' (paragraph 4) is slightly deferential; could more firmly assert BrandGuard's agency."
+        ],
+        "asks": [
+          "Consider: 'BrandGuard AI reuses three governance primitives from intelliflow-core\u2014the WORM Logger, Kill-Switch Guard, and Token FinOps Tracker\u2014as foundational safety components' to emphasize BrandGuard as the primary product choosing to integrate upstream work."
+        ]
       }
     },
-    "raw": "```json\n{\n  \"dimensions\": {\n    \"Product Framing First\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Setup Demoted\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Lineage Disclosure Preserved\": {\n      \"score\": 10,\n      \"issues\": [],\n      \"asks\": []\n    }\n  }\n}\n```"
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Product Framing First\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Setup Demoted\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Lineage Disclosure Preserved\": {\n      \"score\": 9,\n      \"issues\": [\n        \"The phrasing 'inherits governance primitives from its upstream kernel' (paragraph 4) is slightly deferential; could more firmly assert BrandGuard's agency.\"\n      ],\n      \"asks\": [\n        \"Consider: 'BrandGuard AI reuses three governance primitives from intelliflow-core\u2014the WORM Logger, Kill-Switch Guard, and Token FinOps Tracker\u2014as foundational safety components' to emphasize BrandGuard as the primary product choosing to integrate upstream work.\"\n      ]\n    }\n  }\n}\n```"
   },
   "final_verifier": {
     "passed": true,
@@ -32,17 +36,17 @@
     {
       "cycle": 0,
       "state": "DRAFTED",
-      "timestamp": "2026-05-11T22:36:33.473386+00:00",
+      "timestamp": "2026-05-12T00:09:00.966796+00:00",
       "detail": {
         "state": "DRAFTED",
         "output_path": "README.md",
-        "word_count": 1025
+        "word_count": 1016
       }
     },
     {
       "cycle": 1,
       "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:36:35.659871+00:00",
+      "timestamp": "2026-05-12T00:09:03.504962+00:00",
       "detail": {
         "overall_pass": true,
         "scores": {
@@ -54,31 +58,8 @@
     },
     {
       "cycle": 1,
-      "state": "REVISED",
-      "timestamp": "2026-05-11T22:36:52.143345+00:00",
-      "detail": {
-        "state": "REVISED",
-        "output_path": "README.md",
-        "word_count": 870
-      }
-    },
-    {
-      "cycle": 2,
-      "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:36:53.796622+00:00",
-      "detail": {
-        "overall_pass": true,
-        "scores": {
-          "Product Framing First": 9,
-          "Setup Demoted": 9,
-          "Lineage Disclosure Preserved": 10
-        }
-      }
-    },
-    {
-      "cycle": 2,
       "state": "VERIFIED",
-      "timestamp": "2026-05-11T22:36:53.798421+00:00",
+      "timestamp": "2026-05-12T00:09:03.550840+00:00",
       "detail": {
         "verifier": {
           "passed": true,
