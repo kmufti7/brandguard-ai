@@ -22,7 +22,7 @@ Produce a README that opens with Working-Backwards / PR-FAQ framing.
 
 4. **Setup.** Comes AFTER the product framing. Real steps: `python3 -m venv .venv`, `source .venv/bin/activate`, `pip install -e ../intelliflow-core`, `pip install -e .[dev]`, `pytest -q`. Python 3.11+ (3.12 used in development).
 
-5. **Quick example.** A short code snippet showing the actual API: `from brandguard.workflow import run_workflow`, then `run_workflow(audience_query="...", campaign_brief="...")`. Do NOT invent class names. The real entry point is `run_workflow` in `src/brandguard/workflow.py`.
+5. **Quick example.** A short code snippet using the ACTUAL API. `from brandguard.workflow import run_workflow`; then `result = run_workflow(audience_query="...", campaign_brief="...")`. The return value is a DICT, not an object. Top-level keys: `final_state` (a dict), `worm_chain` (list of log entries), `worm_chain_verified` (bool), `trace_id` (str), `node_timings_ms` (dict), `kill_switch_triggered` (bool). `final_state` is itself a dict with keys `audience_filter`, `matched_records`, `generated_copy`, `citations`, `gate_decision` (the string "ALLOW" or "BLOCK"), `gate_reasons`. Show `result["final_state"]["gate_decision"]`, `result["final_state"]["generated_copy"]`, `result["worm_chain_verified"]`. Do NOT invent class names or attribute access. Do not say tests live under src/; they live under `tests/` and pytest is run as `pytest -q` from the repo root.
 
 6. **How To Read The Eval Evidence.** Point at `docs/eval_report_deterministic.md` (committed, commit-stable) and `eval_output/eval_report_llm.md` (gitignored, regenerates). Per the Q1 split.
 

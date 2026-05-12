@@ -1,8 +1,8 @@
 {
   "doc_slug": "usage",
-  "trace_id": "doc_pipeline:usage:a03613d7-4ba0-43a2-9c50-39e16baeb2f4",
+  "trace_id": "doc_pipeline:usage:11779ee3-a4bf-4614-9968-30582ad996ec",
   "final_state": "VERIFIED",
-  "cycles_used": 2,
+  "cycles_used": 1,
   "final_critique": {
     "overall_pass": true,
     "dimensions": {
@@ -14,32 +14,32 @@
       "Evidence Trail": {
         "score": 8,
         "issues": [
-          "Claim that legal_brand_review_gate 'enforces FCC compliance and trademark rules' is author-asserted without citation to the gate implementation or FCC documentation.",
-          "Statement 'deterministic mode cannot call external APIs such as FCC lookups' lacks source reference; could cite the actual rule engine code or API layer.",
-          "DJ-008 reference for mode selection criteria is cited but the document does not quote or link the actual decision record."
+          "Line ~95: Claim that WORM is 'backed by SQLite with append-only triggers and HMAC-SHA256 hash chaining from intelliflow-core' lacks a source reference or link to implementation details.",
+          "Line ~47: Statement that deterministic report is 'safe for CI/CD gates' is author-asserted without citation to a policy doc or architecture decision record."
         ],
         "asks": [
-          "Add a source link or code reference (e.g., 'See src/brandguard/governance/legal_brand_review_gate.py:42-67') to the FCC enforcement claim.",
-          "Link to the API restriction logic in the deterministic rule engine or add a comment explaining which code layer enforces the no-external-API constraint.",
-          "Either inline the DJ-008 criteria in a footnote or provide a file path to the decision record so readers can verify the mode guidance themselves."
+          "Add a source link or file path reference for the WORM implementation details (e.g., 'See src/brandguard/governance/worm.py for implementation').",
+          "Cite or clarify the CI/CD gate policy that makes the deterministic report 'safe' (e.g., link to SAFETY_POLICY.md or inline a brief note)."
         ]
       },
       "Honest Scope": {
         "score": 9,
-        "issues": [
-          "The 'Entry-Level Operations' section mentions 'intermediate rule evaluation steps' are not logged, which is clear, but does not explicitly state whether evaluation reports (generated in separate session) can become stale or drift from WORM chain decisions."
-        ],
-        "asks": [
-          "Add one sentence clarifying whether evaluation reports cached in src/brandguard/evaluation/report_cache/ are versioned or timestamped to prevent confusion about temporal alignment with WORM entries."
-        ]
-      },
-      "Voice": {
-        "score": 9,
         "issues": [],
         "asks": []
+      },
+      "Voice": {
+        "score": 8,
+        "issues": [
+          "Line ~50: 'The LLM report is for local development insight' reads slightly softer than the Strand Wireless plain-direct voice; could be crisper.",
+          "Line ~79: 'This audit trail is essential for compliance reviews and debugging governance decisions' leans slightly motivational; minor drift from numbers-first tone."
+        ],
+        "asks": [
+          "Tighten line ~50 to something more direct: 'The LLM report is for local development only (not a compliance artifact).'",
+          "Consider rephrasing line ~79 to lead with concrete use: 'Use this audit trail to verify governance decisions and debug gating failures.'"
+        ]
       }
     },
-    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Claim that legal_brand_review_gate 'enforces FCC compliance and trademark rules' is author-asserted without citation to the gate implementation or FCC documentation.\",\n        \"Statement 'deterministic mode cannot call external APIs such as FCC lookups' lacks source reference; could cite the actual rule engine code or API layer.\",\n        \"DJ-008 reference for mode selection criteria is cited but the document does not quote or link the actual decision record.\"\n      ],\n      \"asks\": [\n        \"Add a source link or code reference (e.g., 'See src/brandguard/governance/legal_brand_review_gate.py:42-67') to the FCC enforcement claim.\",\n        \"Link to the API restriction logic in the deterministic rule engine or add a comment explaining which code layer enforces the no-external-API constraint.\",\n        \"Either inline the DJ-008 criteria in a footnote or provide a file path to the decision record so readers can verify the mode guidance themselves.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [\n        \"The 'Entry-Level Operations' section mentions 'intermediate rule evaluation steps' are not logged, which is clear, but does not explicitly state whether evaluation reports (generated in separate session) can become stale or drift from WORM chain decisions.\"\n      ],\n      \"asks\": [\n        \"Add one sentence clarifying whether evaluation reports cached in src/brandguard/evaluation/report_cache/ are versioned or timestamped to prevent confusion about temporal alignment with WORM entries.\"\n      ]\n    },\n    \"Voice\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    }\n  }\n}\n```"
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line ~95: Claim that WORM is 'backed by SQLite with append-only triggers and HMAC-SHA256 hash chaining from intelliflow-core' lacks a source reference or link to implementation details.\",\n        \"Line ~47: Statement that deterministic report is 'safe for CI/CD gates' is author-asserted without citation to a policy doc or architecture decision record.\"\n      ],\n      \"asks\": [\n        \"Add a source link or file path reference for the WORM implementation details (e.g., 'See src/brandguard/governance/worm.py for implementation').\",\n        \"Cite or clarify the CI/CD gate policy that makes the deterministic report 'safe' (e.g., link to SAFETY_POLICY.md or inline a brief note).\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line ~50: 'The LLM report is for local development insight' reads slightly softer than the Strand Wireless plain-direct voice; could be crisper.\",\n        \"Line ~79: 'This audit trail is essential for compliance reviews and debugging governance decisions' leans slightly motivational; minor drift from numbers-first tone.\"\n      ],\n      \"asks\": [\n        \"Tighten line ~50 to something more direct: 'The LLM report is for local development only (not a compliance artifact).'\",\n        \"Consider rephrasing line ~79 to lead with concrete use: 'Use this audit trail to verify governance decisions and debug gating failures.'\"\n      ]\n    }\n  }\n}\n```"
   },
   "final_verifier": {
     "passed": true,
@@ -49,55 +49,31 @@
     {
       "cycle": 0,
       "state": "DRAFTED",
-      "timestamp": "2026-05-11T22:45:13.995414+00:00",
+      "timestamp": "2026-05-12T00:19:32.107818+00:00",
       "detail": {
         "state": "DRAFTED",
         "output_path": "docs/USAGE.md",
-        "word_count": 660
+        "word_count": 733
       }
     },
     {
       "cycle": 1,
       "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:45:24.666758+00:00",
-      "detail": {
-        "overall_pass": false,
-        "scores": {
-          "Specificity": 9,
-          "Evidence Trail": 6,
-          "Honest Scope": 7,
-          "Voice": 8
-        }
-      }
-    },
-    {
-      "cycle": 1,
-      "state": "REVISED",
-      "timestamp": "2026-05-11T22:45:43.400840+00:00",
-      "detail": {
-        "state": "REVISED",
-        "output_path": "docs/USAGE.md",
-        "word_count": 1002
-      }
-    },
-    {
-      "cycle": 2,
-      "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:45:49.092415+00:00",
+      "timestamp": "2026-05-12T00:19:37.347610+00:00",
       "detail": {
         "overall_pass": true,
         "scores": {
           "Specificity": 9,
           "Evidence Trail": 8,
           "Honest Scope": 9,
-          "Voice": 9
+          "Voice": 8
         }
       }
     },
     {
-      "cycle": 2,
+      "cycle": 1,
       "state": "VERIFIED",
-      "timestamp": "2026-05-11T22:45:49.135510+00:00",
+      "timestamp": "2026-05-12T00:19:37.391783+00:00",
       "detail": {
         "verifier": {
           "passed": true,

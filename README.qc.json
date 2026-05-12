@@ -1,8 +1,8 @@
 {
   "doc_slug": "readme",
-  "trace_id": "doc_pipeline:readme:32884a7f-7449-4274-90e0-db6e74ab0a1e",
+  "trace_id": "doc_pipeline:readme:98274105-f2a9-4ddf-9821-49070daf5875",
   "final_state": "VERIFIED",
-  "cycles_used": 1,
+  "cycles_used": 2,
   "final_critique": {
     "overall_pass": true,
     "dimensions": {
@@ -18,15 +18,11 @@
       },
       "Lineage Disclosure Preserved": {
         "score": 9,
-        "issues": [
-          "The phrasing 'inherits governance primitives from its upstream kernel' (paragraph 4) is slightly deferential; could more firmly assert BrandGuard's agency."
-        ],
-        "asks": [
-          "Consider: 'BrandGuard AI reuses three governance primitives from intelliflow-core\u2014the WORM Logger, Kill-Switch Guard, and Token FinOps Tracker\u2014as foundational safety components' to emphasize BrandGuard as the primary product choosing to integrate upstream work."
-        ]
+        "issues": [],
+        "asks": []
       }
     },
-    "raw": "```json\n{\n  \"dimensions\": {\n    \"Product Framing First\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Setup Demoted\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Lineage Disclosure Preserved\": {\n      \"score\": 9,\n      \"issues\": [\n        \"The phrasing 'inherits governance primitives from its upstream kernel' (paragraph 4) is slightly deferential; could more firmly assert BrandGuard's agency.\"\n      ],\n      \"asks\": [\n        \"Consider: 'BrandGuard AI reuses three governance primitives from intelliflow-core\u2014the WORM Logger, Kill-Switch Guard, and Token FinOps Tracker\u2014as foundational safety components' to emphasize BrandGuard as the primary product choosing to integrate upstream work.\"\n      ]\n    }\n  }\n}\n```"
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Product Framing First\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Setup Demoted\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Lineage Disclosure Preserved\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    }\n  }\n}\n```"
   },
   "final_verifier": {
     "passed": true,
@@ -36,17 +32,36 @@
     {
       "cycle": 0,
       "state": "DRAFTED",
-      "timestamp": "2026-05-12T00:09:00.966796+00:00",
+      "timestamp": "2026-05-12T00:18:46.640538+00:00",
       "detail": {
         "state": "DRAFTED",
         "output_path": "README.md",
-        "word_count": 1016
+        "word_count": 1276
       }
     },
     {
       "cycle": 1,
       "state": "CRITIQUED",
-      "timestamp": "2026-05-12T00:09:03.504962+00:00",
+      "timestamp": "2026-05-12T00:18:49.839604+00:00",
+      "detail": {
+        "overall_pass": false,
+        "scores": {}
+      }
+    },
+    {
+      "cycle": 1,
+      "state": "REVISED",
+      "timestamp": "2026-05-12T00:19:15.961635+00:00",
+      "detail": {
+        "state": "REVISED",
+        "output_path": "README.md",
+        "word_count": 1398
+      }
+    },
+    {
+      "cycle": 2,
+      "state": "CRITIQUED",
+      "timestamp": "2026-05-12T00:19:17.389660+00:00",
       "detail": {
         "overall_pass": true,
         "scores": {
@@ -57,9 +72,9 @@
       }
     },
     {
-      "cycle": 1,
+      "cycle": 2,
       "state": "VERIFIED",
-      "timestamp": "2026-05-12T00:09:03.550840+00:00",
+      "timestamp": "2026-05-12T00:19:17.467402+00:00",
       "detail": {
         "verifier": {
           "passed": true,

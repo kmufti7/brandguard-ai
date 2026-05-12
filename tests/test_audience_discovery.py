@@ -6,6 +6,7 @@ import json
 
 from brandguard.agents.audience_discovery import (
     apply_filter,
+    discover_audience,
     extract_filter,
 )
 from brandguard.llm import make_static_llm
@@ -71,3 +72,16 @@ def test_audience_filter_extraction_and_deterministic_apply():
     matched = apply_filter(filter_dict, _TINY_CORPUS)
     assert len(matched) == 1
     assert matched[0]["customer_id"] == "1"
+
+
+def test_discover_audience_composes_extract_and_apply():
+    """ADR-001 top-level entry: discover_audience() = extract_filter + apply_filter.
+
+    (Audit I4: previously dead code; this test wires it into coverage.)
+    """
+    mock = make_static_llm(json.dumps({"churn_risk": ["high"]}))
+    result = discover_audience("at-risk customers", corpus=_TINY_CORPUS, llm=mock)
+    assert result["query"] == "at-risk customers"
+    assert result["filter"] == {"churn_risk": ["high"]}
+    assert result["match_count"] == 1
+    assert result["matched_records"][0]["customer_id"] == "1"

@@ -318,7 +318,13 @@ def score_scenario(
         faithfulness = None
         relevance = None
     else:
-        chunk_texts = [a for a in retrieved_anchors]  # use anchor IDs as proxy text
+        # KNOWN LIMITATION (audit M4 / backlog B20): we pass retrieval anchor IDs
+        # as the "context" the faithfulness judge sees, not the chunk bodies. The
+        # workflow result only persists anchors in `retrieved_chunks`. Until the
+        # workflow surfaces chunk text, the faithfulness score reflects "are the
+        # copy's claims consistent with the named sources" rather than "...with the
+        # source contents". Treat it as a directional metric, not a precise one.
+        chunk_texts = list(retrieved_anchors)
         faithfulness = faithfulness_score(copy_text, chunk_texts, llm=llm)
         relevance = answer_relevance_score(
             scenario.get("audience_query", ""), copy_text, llm=llm

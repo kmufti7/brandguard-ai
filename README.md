@@ -1,6 +1,6 @@
 ---
 state: VERIFIED
-timestamp: 2026-05-12T00:09:00.966391+00:00
+timestamp: 2026-05-12T00:19:15.960939+00:00
 brief: scripts/doc_pipeline/briefs/readme.brief.md
 mode: encoded
 plugin_command: 
@@ -12,95 +12,131 @@ word_count_floor: 800
 
 ## Product Overview
 
-You can now describe your audience in plain English, and BrandGuard AI will segment it from a 500-record synthetic customer database, generate campaign copy with mandatory source citations, route it through a deterministic legal and brand review gate, and produce a tamper-evident audit trail of every decision. No guesswork. No unsigned claims. A marketer types "Active business customers in Texas with annual revenue over $2M" into the Audience Discovery Agent, the system returns a filtered segment with record counts and matching criteria, feeds that segment into the RAG Copy Generation Agent along with brand voice guidelines and product fact sheets, receives draft campaign copy tagged with citations to those exact sources, submits the copy to the Legal/Brand Review Gate, and either ships it (if all citations resolve and required disclosures are present) or fails safely with a specific rejection reason. Every step writes to an append-only HMAC-SHA256-verified log. This is the first governed marketing AI product built on a deterministic review architecture instead of post-hoc auditing.
+**Marketers at Strand Wireless can now describe an audience in plain English, and the system will deliver a brand-safe campaign within minutes, with every step logged immutably.** You write "target Midwest families, income 75k–150k, with kids, Android users," and BrandGuard AI extracts a machine-readable filter, runs it against a synthetic CRM corpus of 500 customer records, generates on-brand campaign copy with required citations to Strand's voice guidelines and product fact sheets, routes the output through a deterministic legal and brand review gate, and produces an audit trail that survives tampering. If the copy violates a brand rule, the gate blocks it and tells you why. If it passes, you get ALLOW, the final copy, and a cryptographically verified log chain.
 
-## How It Works: Four Native Components
+The system does this by combining four native components: an Audience Discovery Agent that extracts filters from natural language; a RAG Copy Generation Agent that retrieves brand voice and product data to write copy; a Legal/Brand Review Gate that applies three deterministic compliance rules without any LLM in the path; and a Hallucination Evaluation Harness that judges whether the generated copy is faithful to the source material. These components sit on top of intelliflow-core, an upstream governance kernel that provides tamper-evident logging, financial tracking, and emergency kill-switch capability. The entire system is documented through a Doc QC pipeline (Author / Critic / Verifier / Orchestrator) that ensures consistency between source code, governance records, and user-facing prose.
 
-**Audience Discovery Agent** extracts filter logic from natural language queries using an LLM, then applies those filters deterministically over the synthetic CRM corpus. The agent outputs segment membership with counts and decision traces so you know exactly why records matched.
+## Architecture
 
-**RAG Copy Generation Agent** retrieves relevant sections from the brand voice documentation (data/brand_voice.md) and product fact sheets using FAISS vector retrieval, then generates campaign copy with required citations embedded. Every claim ties back to a source. The LLM cannot generate citations; it can only include retrieval results, so hallucinations are bounded by what the corpus contains.
+BrandGuard AI is built from four purpose-built components plus three governance primitives inherited from intelliflow-core.
 
-**Legal/Brand Review Gate** applies three deterministic rules in fail-closed mode per ADR-003. First, every citation anchor must resolve to an actual section in the sourced documents. Second, if the campaign mentions autopay, automatic renewal, or recurring charges, the copy must include the FTC-required plain-language disclosure. Third, unlimited plans must disclose data throttling thresholds if any apply. No LLM interprets these rules. A Python checker runs the validation in order and rejects the entire campaign if any rule fails, producing a specific error message so you know what to fix.
+**Audience Discovery Agent.** The LLM reads your natural-language audience description and extracts a filter expression that names CRM fields and constraints (e.g., `region == 'Midwest' AND income_bracket == '75k-150k' AND has_children == True`). Once the filter is extracted, a deterministic Python evaluator applies it against a 500-record synthetic CRM corpus. The result is a list of matched customer IDs and their attributes. No LLM is involved in the filtering itself; the LLM generates the filter once, and a pure function applies it. This design removes LLM variance from a critical path.
 
-**Hallucination Evaluation Harness** measures faithfulness using ragas-style LLM-judged metrics (answer relevance, faithfulness scores) and three deterministic checks: citation coverage (percentage of claims with citations), citation validity (all citations resolve), and fact consistency (no contradictions between campaign text and source fact sheets). The harness runs on every generated campaign and writes results to eval_output/eval_report_llm.md.
+**RAG Copy Generation Agent.** The system retrieves relevant fragments from the Strand Wireless brand voice document (data/brand_voice.md, which defines eight voice principles and seven citable sections) and from the product fact sheets for the five SKUs (Essentials, Pro, Family, Unlimited+, Business). A FAISS vector index makes retrieval fast. The LLM then generates campaign copy that weaves these sources together. Every claim in the output must include a citation to either the brand voice doc (e.g., [brand_voice:§3] for the value proposition section) or a fact sheet field (e.g., [fact_sheet:Pro:network_coverage]). Citations are not optional; the downstream Legal/Brand Review Gate will reject any copy that omits them.
 
-BrandGuard AI also inherits governance primitives from its upstream kernel, intelliflow-core: the WORM Logger provides cryptographic append-only storage using HMAC-SHA256 hash chains and SQLite triggers that prevent deletion or modification of audit records; the Kill-Switch Guard allows immediate circuit-breaking of unsafe LLM outputs; the Token FinOps Tracker measures and caps LLM inference costs per campaign. These upstream governance components are reused as-is, not reimplemented.
+**Legal/Brand Review Gate.** This is a deterministic, LLM-free router that applies three rules and fails closed. Rule 1: every citation in the generated copy must exist and resolve. Rule 2: if the copy mentions autopay, the disclosure "Autopay required; see terms" must appear. Rule 3: if the copy mentions unlimited data, the disclosure "Unlimited subject to fair-use policies" must appear. The gate outputs either ALLOW or BLOCK, along with a list of reasons if a block occurs. No LLM logic is in this path, per ADR-003. This ensures that compliance decisions are auditable and deterministic.
 
-The Doc QC pipeline (Author, Critic, Verifier, and Orchestrator agents) that produced this README also runs on every internal document you produce, ensuring consistency with brand voice, factual accuracy against decision records, and compliance with citation rules before publication.
+**Hallucination Evaluation Harness.** This component measures whether the generated copy is faithful to its sources. It uses ragas-style metrics: an LLM-judged faithfulness score (does the copy accurately reflect the brand voice and product data?) and answer-relevance score (does the copy address the campaign brief?). It also computes three deterministic metrics: citation count, citation resolution rate, and gate pass rate. The harness produces a JSON report for each run.
+
+**Governance Primitives from intelliflow-core.** BrandGuard AI reuses three governance services from its upstream kernel:
+
+- WORM Logger: writes every step (audience filter, retrieved documents, generated copy, gate decision, and final state) to an append-only SQLite database with HMAC-SHA256 hash chaining. Each log entry is cryptographically linked to the previous one, so tampering is detectable.
+- Kill-Switch Guard: if a financial threshold is exceeded or a security flag is triggered, the kill-switch halts all inference immediately.
+- Token FinOps Tracker: records LLM token usage (input and output) and cost per run, enabling quota management and cost attribution.
+
+**Doc QC Pipeline.** This README and all governance documents were produced by a four-stage pipeline: Author writes the prose, Critic checks it against brief and brand voice, Verifier resolves all citations and ensures they exist, and Orchestrator integrates feedback and commits the final version. This pipeline is documented in the Decision Journal (docs/decision_journal.md).
 
 ## Lineage Disclosure
 
-BrandGuard AI consumes intelliflow-core as its upstream governance kernel. The WORM Logger, Kill-Switch Guard, and Token FinOps Tracker components are inherited directly; BrandGuard adds four native agents and the deterministic Legal/Brand Review Gate on top. BrandGuard is a distinct product, not a module or extension of intelliflow-core. The upstream kernel provides the tamper-evidence and safety primitives; BrandGuard builds the marketing AI workflows.
+BrandGuard AI consumes intelliflow-core as its upstream governance kernel. Intelliflow-core provides the WORM Logger, Kill-Switch Guard, and Token FinOps Tracker that BrandGuard AI relies on for audit, safety, and cost tracking. BrandGuard AI adds its own agents (Audience Discovery, RAG Copy Generation, Hallucination Evaluation) and its own Legal/Brand Review Gate. The two products are separate; BrandGuard AI is a purpose-built marketing product that uses intelliflow-core's governance layer, not an extension or module of it.
 
 ## Setup
 
-Requires Python 3.11 or later (3.12 used in development).
+BrandGuard AI requires Python 3.11 or later (development was done with Python 3.12).
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ../intelliflow-core
-pip install -e .[dev]
-pytest -q
-```
+1. Create a virtual environment:
+   ```bash
+   python3 -m venv .venv
+   ```
 
-The `[dev]` extra includes pytest, ragas, FAISS, and documentation dependencies. The intelliflow-core package must be installed first so that governance imports resolve correctly.
+2. Activate it:
+   ```bash
+   source .venv/bin/activate
+   ```
+
+3. Install the upstream intelliflow-core kernel:
+   ```bash
+   pip install -e ../intelliflow-core
+   ```
+
+4. Install BrandGuard AI and its development dependencies:
+   ```bash
+   pip install -e .[dev]
+   ```
+
+5. Run the test suite:
+   ```bash
+   pytest -q
+   ```
+
+Tests are located in `tests/` and are run from the repository root.
 
 ## Quick Example
+
+Here is a minimal workflow invocation:
 
 ```python
 from brandguard.workflow import run_workflow
 
 result = run_workflow(
-    audience_query="Active business customers in Texas with annual revenue over $2M",
-    campaign_brief="Q2 enterprise promotion for Unlimited+ plan"
+    audience_query="Target families in the Midwest, household income 75k–150k, with children, Android preference.",
+    campaign_brief="Promote the Family plan for back-to-school season."
 )
 
-print(result.audience_segment)      # List of matching CRM records
-print(result.generated_copy)        # Brand-safe campaign text with citations
-print(result.review_gate_decision)  # APPROVED or REJECTED with reason
-print(result.audit_log_hash)        # HMAC-SHA256 chain hash for this run
+# Inspect the result
+print(f"Gate Decision: {result['final_state']['gate_decision']}")  # 'ALLOW' or 'BLOCK'
+print(f"Generated Copy:\n{result['final_state']['generated_copy']}")
+print(f"WORM Chain Verified: {result['worm_chain_verified']}")  # True if hash chain is intact
+print(f"Trace ID: {result['trace_id']}")  # Unique identifier for this run
+print(f"Citations: {result['final_state']['citations']}")  # List of citation anchors
+print(f"Gate Reasons: {result['final_state']['gate_reasons']}")  # If BLOCK, why
+
+# If gate_decision is 'BLOCK', inspect gate_reasons:
+if result['final_state']['gate_decision'] == 'BLOCK':
+    for reason in result['final_state']['gate_reasons']:
+        print(f"  - {reason}")
 ```
 
-The `run_workflow` function in src/brandguard/workflow.py orchestrates the four agents in sequence. It returns a result object containing the segment, the copy, the gate decision, and the cryptographic log hash. If the review gate rejects the copy, the decision field includes the rule that failed and the missing or invalid citation.
+The `run_workflow` function returns a dictionary with these top-level keys:
+
+- `final_state`: a dict containing `audience_filter`, `matched_records`, `generated_copy`, `citations`, `gate_decision`, and `gate_reasons`.
+- `worm_chain`: list of tamper-evident log entries.
+- `worm_chain_verified`: boolean indicating whether the HMAC hash chain is intact.
+- `trace_id`: a UUID that ties all logs for this run together.
+- `node_timings_ms`: dict of milliseconds spent in each stage (discovery, RAG, gate, eval).
+- `kill_switch_triggered`: boolean indicating whether the financial or security kill-switch was activated.
 
 ## How To Read The Evaluation Evidence
 
-Two reports document product behavior:
+BrandGuard AI publishes two evaluation reports:
 
-- **docs/eval_report_deterministic.md** contains committed, reproducible results: citation validity rates, disclosure detection accuracy, and deterministic metric scores. This file is stable across commits.
-- **eval_output/eval_report_llm.md** is regenerated each time you run the evaluation suite. It contains ragas-style LLM-judged faithfulness and relevance scores. This file is gitignored because LLM outputs vary slightly.
+- **Deterministic Metrics:** see docs/eval_report_deterministic.md. This file is committed to version control and does not change unless you commit a new evaluation run. It reports citation resolution rate, gate pass rate, and correctness of the three deterministic compliance rules.
+- **LLM-Judged Metrics:** see eval_output/eval_report_llm.md. This file is gitignored and regenerates each time you run `pytest` with evaluation enabled. It reports faithfulness and answer-relevance scores as computed by a separate LLM-based judge.
 
-Run `pytest src/brandguard/eval/ -q` to regenerate the LLM report. Start with the deterministic report to understand baseline guarantees, then read the LLM report to see production hallucination metrics.
+The Q1 split between deterministic and LLM-judged metrics ensures that compliance assertions are not dependent on LLM judgement, and that inference quality is tracked separately.
 
 ## Documentation Map
 
-**Product Documentation**
+**Product Documentation:**
+- docs/PRODUCT_OVERVIEW.md: high-level product narrative, personas, and use cases.
+- docs/USER_PERSONAS.md: detailed profiles of campaign managers and compliance officers.
+- docs/USE_CASES.md: concrete scenarios for Strand Wireless marketing teams.
+- docs/SUCCESS_METRICS.md: OKRs and success criteria for Q1–Q3 2026.
+- docs/ROADMAP.md: planned features and deprecations.
 
-- docs/PRODUCT_OVERVIEW.md: Feature summary and value proposition.
-- docs/USER_PERSONAS.md: Marketer, compliance officer, and product manager workflows.
-- docs/USE_CASES.md: Email campaigns, social ads, and promotion rules.
-- docs/SUCCESS_METRICS.md: How to measure adoption, safety, and campaign performance.
-- docs/ROADMAP.md: Planned features for Q2 and Q3 2026.
+**Engineering Documentation:**
+- docs/ARCHITECTURE.md: system design, data flow, and component specifications.
+- docs/USAGE.md: configuration options, environment variables, and API reference.
+- docs/CONTRIBUTING.md: branch strategy, coding standards, and review process.
+- docs/MLOPS_PLAYBOOK.md: model serving, retraining, and monitoring.
+- docs/INTEGRATION_SURFACE.md: webhook formats, event schemas, and downstream connectors.
 
-**Engineering Documentation**
-
-- docs/ARCHITECTURE.md: Detailed component design, data flow, and interface contracts.
-- docs/USAGE.md: API reference and common patterns.
-- docs/CONTRIBUTING.md: Pull request process and code review standards.
-- docs/MLOPS_PLAYBOOK.md: Model serving, retraining, and inference monitoring.
-- docs/INTEGRATION_SURFACE.md: How to connect BrandGuard to your CRM and approval systems.
-
-**Governance Documentation**
-
-- docs/decision_journal.md: Append-only Decision Journal with 17+ entries documenting design choices, trade-offs, and reviewed assumptions.
-- docs/adr/: Architecture Decision Records ADR-001 through ADR-004 covering LLM safety, determinism, and citation requirements.
-- docs/pdr/: Product Decision Records PDR-001 through PDR-004 covering feature scope and user experience choices.
-
-**Brand & Style**
-
-- data/brand_voice.md: Eight voice principles and writing style guide for Strand Wireless brand communications.
+**Governance Documentation:**
+- docs/decision_journal.md: Decision Journal, append-only log of 21+ architectural and process decisions (entries DJ-001 through DJ-017 are current).
+- docs/adr/: Architecture Decision Records ADR-001 through ADR-004, covering legal gate design, citation mechanics, LLM-free routing, and eval methodology.
+- docs/pdr/: Product Decision Records PDR-001 through PDR-004, covering audience discovery, synthetic CRM design, brand voice versioning, and roadmap.
+- data/brand_voice.md: Strand Wireless brand voice guide, including eight voice principles and seven citable sections (§1 through §7).
 
 ## License
 
-Copyright 2026 Kaizen Works, LLC. Licensed under the Apache License, Version 2.0. See LICENSE for full terms.
+BrandGuard AI is released under the Apache License 2.0. Copyright 2026 Kaizen Works, LLC.

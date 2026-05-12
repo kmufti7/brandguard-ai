@@ -1,6 +1,6 @@
 ---
 state: VERIFIED
-timestamp: 2026-05-11T22:45:43.400444+00:00
+timestamp: 2026-05-12T00:19:32.107401+00:00
 brief: scripts/doc_pipeline/briefs/usage.brief.md
 mode: encoded
 plugin_command: 
@@ -10,197 +10,138 @@ word_count_floor: 600
 
 # USAGE
 
-## Overview
+BrandGuard AI is a governed marketing AI system that filters campaign copy against brand and legal guardrails. This guide covers the standard workflows for running the system end to end, evaluating its performance, and validating its audit trail.
 
-BrandGuard AI lets Strand Wireless marketing teams check compliance, generate evaluation reports, and audit governance decisions. This guide shows you how to run the end-to-end workflow, execute evaluation reports in both deterministic and LLM modes, inspect the WORM chain, and verify chain integrity.
+## Run the Workflow
 
-## Running the End-to-End Workflow
-
-The primary entry point is `run_governance_workflow()` in src/brandguard/governance/workflow_orchestrator.py. This function executes three sequential gates: the legal brand review gate, the tone and positioning gate, and the claim substantiation gate. Each step records an immutable log entry in the WORM chain.
+The main entry point is the `run_workflow` function in `src/brandguard/workflow.py`. It accepts an audience query and campaign brief, applies governance rules, and returns a structured result.
 
 ```python
-from brandguard.governance.workflow_orchestrator import run_governance_workflow
-from brandguard.models import MarketingAsset
+from brandguard.workflow import run_workflow
 
-# Create a marketing asset (email campaign for Strand Wireless)
-asset = MarketingAsset(
-    content="Strand Wireless gives you unlimited 5G data at half the price of competitors.",
-    asset_type="email_campaign",
-    channel="email",
-    brand="Strand Wireless"
+result = run_workflow(
+    audience_query="Adults age 25–54 in California",
+    campaign_brief="Unlimited wireless plan for professionals. $89/month, no contract."
 )
-
-# Run the full governance workflow
-result = run_governance_workflow(asset)
-
-print("Workflow Status:", result.status)
-print("Passed Legal Gate:", result.legal_gate_passed)
-print("Passed Tone Gate:", result.tone_gate_passed)
-print("Passed Claims Gate:", result.claims_gate_passed)
-print("Final Decision:", result.decision)  # "approve", "reject", or "flag_for_review"
 ```
 
-**Expected output:**
-```
-Workflow Status: completed
-Passed Legal Gate: False
-Passed Tone Gate: True
-Passed Claims Gate: False
-Final Decision: flag_for_review
-Reason: Claim "half the price" lacks substantiation. No pricing data attached.
-```
+The function returns a dictionary with these keys:
 
-The legal brand review gate (src/brandguard/governance/legal_brand_review_gate.py) enforces FCC compliance and trademark rules. The tone and positioning gate checks for brand voice alignment per data/brand_voice.md. The claim substantiation gate validates that explicit and implicit product claims are supported by evidence. See ADR-001 for the three-gate architecture decision.
+- **`final_state`**: A dict containing the approved or blocked output. Keys are `audience_filter`, `matched_records`, `generated_copy`, `citations`, `gate_decision`, and `gate_reasons`.
+- **`worm_chain`**: A list of immutable event records (write-once read-many log).
+- **`worm_chain_verified`**: Boolean indicating whether the WORM chain hash chain is valid.
+- **`trace_id`**: A unique identifier for this workflow run.
+- **`node_timings_ms`**: A dict mapping node names to execution time in milliseconds.
+- **`kill_switch_triggered`**: Boolean; True if the system halted execution due to a safety constraint.
 
-## Scope of the Workflow
+### Check the Gate Decision
 
-This guide covers three primary workflows: end-to-end governance (shown above), evaluation reports (below), and WORM chain inspection. The end-to-end workflow is the standard entry point and the only operation that appends entries to the WORM chain.
-
-For custom gate logic or standalone rule execution, refer to src/brandguard/governance/rules/ where individual rule functions can be imported and called in isolation. However, doing so bypasses WORM logging and audit guarantees.
-
-## Running Evaluation Reports
-
-Evaluation reports score marketing assets against governance rules and produce compliance metrics. You can run reports in two modes: deterministic and LLM. See DJ-008 for detailed criteria on when to use each mode.
-
-**Deterministic mode** runs rule-based checks only. No external LLM calls occur. Deterministic mode cannot call external APIs such as FCC lookups; it evaluates only in-process rules against the asset text and attached metadata. Use deterministic mode for rapid feedback on rule violations, typically under 2 seconds per asset.
-
-**LLM mode** spots implicit claims and brand tone drift using semantic analysis. LLM mode calls Claude or GPT-4 to evaluate nuance, tone consistency, and unstated product claims. Use LLM mode for deep compliance reviews where implicit messaging matters, typically 8 to 15 seconds per asset depending on token count.
-
-### Running a Deterministic Report
+After the workflow completes, read the gate decision and copy from the final state:
 
 ```python
-from brandguard.evaluation.report_engine import generate_evaluation_report
-
-asset = MarketingAsset(
-    content="Get lightning-fast 5G from Strand Wireless.",
-    asset_type="social_post",
-    channel="twitter",
-    brand="Strand Wireless"
-)
-
-report = generate_evaluation_report(asset, mode="deterministic")
-
-print("Report Mode:", report.mode)
-print("Total Rules Checked:", report.total_rules)
-print("Rules Passed:", report.rules_passed)
-print("Rules Failed:", report.rules_failed)
-print("Compliance Score:", f"{report.compliance_score}%")
-
-for violation in report.violations:
-    print(f"  - {violation.rule_id}: {violation.message}")
+if result["final_state"] is None:
+    print("Workflow halted. Kill switch triggered:", result["kill_switch_triggered"])
+else:
+    decision = result["final_state"]["gate_decision"]
+    copy = result["final_state"]["generated_copy"]
+    
+    if decision == "ALLOW":
+        print("Campaign approved:", copy)
+    elif decision == "BLOCK":
+        print("Campaign blocked.")
+        print("Reasons:", result["final_state"]["gate_reasons"])
 ```
 
-**Expected output:**
-```
-Report Mode: deterministic
-Total Rules Checked: 12
-Rules Passed: 10
-Rules Failed: 2
-Compliance Score: 83%
-  - TONE_001: Phrase "lightning-fast" is intensifier; use factual descriptors per brand_voice:§3
-  - CLAIM_005: "fastest" is implicit superlative claim; requires FCC or independent benchmark data
+### Kill Switch Behavior
+
+The system includes a kill switch that halts execution if the `audience_query` parameter is empty. When triggered, `result["kill_switch_triggered"]` is `True` and `result["final_state"]` is `None`. All other fields remain populated for debugging.
+
+## Run the Eval Reports (Q1 Split)
+
+The evaluation harness in `src/brandguard/eval/eval_harness.py` generates two separate reports: one deterministic (committed to version control) and one LLM-based (gitignored).
+
+```bash
+python scripts/run_eval_report.py --both
 ```
 
-### Running an LLM Report
+This produces:
+
+- `docs/eval_report_deterministic.md`: Committed, verified, reproducible metrics on fixture data.
+- `eval_output/eval_report_llm.md`: Gitignored; LLM grading results that vary by model state.
+
+To run only one:
+
+```bash
+python scripts/run_eval_report.py --deterministic-only
+python scripts/run_eval_report.py --llm-only
+```
+
+Each report includes pass rates, failure reasons, and timing statistics. The deterministic report is safe for CI/CD gates; the LLM report is for local development insight.
+
+## Run the Test Suite
+
+Execute all tests from the repository root:
+
+```bash
+pytest -q
+```
+
+The `pyproject.toml` configuration sets `testpaths = ["tests"]`, so pytest discovers and runs only test files in the `tests/` directory. The `-q` flag suppresses verbose output. Do not point pytest at `src/` directly; the test discovery is configured in the project file.
+
+Tests cover unit cases for the workflow, governance rules, agent behavior, and the WORM logger.
+
+## Run the Doc QC Pipeline
+
+The document quality control system verifies that generated documentation matches a brief, adheres to a rubric, and passes automated checks. Run it with:
+
+```bash
+python -m scripts.doc_pipeline.orchestrator --brief BRIEF.brief.md --rubric RUBRIC.rubric.md --output OUT.md
+```
+
+Parameters:
+
+- `--brief`: Path to the brief file defining the doc's scope and requirements.
+- `--rubric`: Path to the rubric file specifying style, voice, and citation rules.
+- `--output`: Path where the verified document will be written.
+
+The orchestrator produces two files:
+
+- `OUT.md`: The final verified document.
+- `OUT.md.qc.json`: A sidecar JSON file with QC details, including pass/fail status for each check.
+
+The pipeline runs up to 5 rewrite cycles per DJ-021. Exit code 0 indicates VERIFIED; non-zero exit indicates FAILED. Check the `.qc.json` file for detailed failure reasons.
+
+## Inspect the WORM Chain
+
+Every workflow run produces an immutable event log in the `worm_chain` field. This chain is write-once read-many (WORM), backed by SQLite with append-only triggers and HMAC-SHA256 hash chaining from intelliflow-core.
 
 ```python
-report = generate_evaluation_report(asset, mode="llm", model="claude-3-sonnet")
+result = run_workflow(audience_query="...", campaign_brief="...")
 
-print("Report Mode:", report.mode)
-print("Model Used:", report.llm_model)
-print("Processing Time:", report.processing_time_seconds, "seconds")
-print("Compliance Score:", f"{report.compliance_score}%")
+print("WORM chain length:", len(result["worm_chain"]))
+print("Chain verified:", result["worm_chain_verified"])
 
-for violation in report.violations:
-    print(f"  - {violation.rule_id}: {violation.message}")
-    print(f"    Evidence: {violation.evidence}")
+for event in result["worm_chain"]:
+    print(event["timestamp"], event["node"], event["action"])
 ```
 
-**Expected output:**
-```
-Report Mode: llm
-Model Used: claude-3-sonnet
-Processing Time: 9.2 seconds
-Compliance Score: 75%
-  - TONE_001: Phrase "lightning-fast" is intensifier; use factual descriptors per brand_voice:§3
-    Evidence: Semantic analysis detected speed-based hyperbole relative to Strand voice guidelines.
-  - CLAIM_005: "fastest" is implicit superlative claim; requires FCC or independent benchmark data
-    Evidence: LLM detected unstated performance superiority claim not supported by provided evidence.
-  - BRAND_DRIFT_003: Tone leans promotional; Strand voice emphasizes reliability over excitement.
-    Evidence: Semantic vector analysis shows 0.87 similarity to "premium marketing" vs 0.42 to "technical confidence".
-```
+Each entry contains:
 
-DJ-008 states: use deterministic mode for routine checks (turnaround under 2 seconds, rule violations only); use LLM mode for campaigns with subtle messaging, brand tone risk, or implicit claims (turnaround 8-15 seconds, semantic depth required).
+- **`timestamp`**: UTC ISO 8601 timestamp.
+- **`node`**: The workflow node that produced the event (e.g., "audience_filter", "llm_copy_gen", "legal_gate").
+- **`action`**: A string describing the operation (e.g., "started", "completed", "gating_rule_applied").
+- **`hash`**: HMAC-SHA256 digest of this record plus the previous hash (chain verification).
+- **`details`**: Structured data specific to the action.
 
-## Inspecting and Verifying the WORM Chain
-
-The WORM (Write Once Read Many) chain is the immutable audit log of all governance decisions. Only `run_governance_workflow()` can append entries. Users can read and verify but cannot modify chain entries.
-
-### Reading Chain Entries
+To verify the chain independently, call:
 
 ```python
-from brandguard.chain.worm_chain import WORMChain
+from brandguard.governance.worm import verify_chain
 
-chain = WORMChain(storage_path="data/worm_chain.log")
-
-# Read the last 5 entries
-recent_entries = chain.read_last_n(5)
-
-for entry in recent_entries:
-    print(f"Entry ID: {entry.id}")
-    print(f"Timestamp: {entry.timestamp}")
-    print(f"Asset: {entry.asset_id}")
-    print(f"Decision: {entry.decision}")
-    print(f"Hash: {entry.hash}")
-    print("---")
+is_valid = verify_chain(result["worm_chain"])
+print("Chain integrity:", is_valid)
 ```
 
-**Expected output:**
-```
-Entry ID: 42
-Timestamp: 2025-01-15T14:32:09Z
-Asset: email_campaign_strand_q1_2025
-Decision: approve
-Hash: 0x7f2a9c... (SHA-256)
----
-Entry ID: 41
-Timestamp: 2025-01-15T14:18:33Z
-Asset: social_post_5g_launch
-Decision: flag_for_review
-Hash: 0x3e8b1d...
----
-```
+The `verify_chain()` function recomputes the HMAC-SHA256 chain from the first event to the last, confirming no tampering. If any record is modified or deleted, verification fails.
 
-### Verifying Chain Integrity
-
-```python
-from brandguard.chain.worm_chain import verify_chain
-
-# Verify that the entire chain is intact and unaltered
-verification_result = verify_chain("data/worm_chain.log")
-
-print("Chain Valid:", verification_result.is_valid)
-print("Total Entries:", verification_result.entry_count)
-print("Integrity Checks Passed:", verification_result.checks_passed)
-print("Integrity Checks Failed:", verification_result.checks_failed)
-
-if not verification_result.is_valid:
-    for error in verification_result.errors:
-        print(f"  Error at entry {error.entry_id}: {error.message}")
-```
-
-**Expected output:**
-```
-Chain Valid: True
-Total Entries: 127
-Integrity Checks Passed: 127
-Integrity Checks Failed: 0
-```
-
-If chain integrity is compromised (e.g., an entry is altered), `verify_chain()` returns `is_valid: False` and lists the entry ID and hash mismatch. See src/brandguard/chain/worm_chain.py for the cryptographic verification logic.
-
-## Entry-Level Operations
-
-WORM logging records only final governance decisions (approve, reject, flag_for_review), not intermediate rule evaluation steps. This design balances audit completeness with storage efficiency. When `run_governance_workflow()` completes, one entry is appended to the chain containing the asset ID, timestamp, all three gate decisions, and a cryptographic hash linking to the previous entry.
-
-For compliance investigations, retrieve the relevant workflow result from the WORM chain entry and cross-reference it with evaluation reports generated during the same session. Reports are stored separately in src/brandguard/evaluation/report_cache/ and are not part of the chain itself.
+This audit trail is essential for compliance reviews and debugging governance decisions. It is always present, even if `kill_switch_triggered` is True.

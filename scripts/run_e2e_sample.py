@@ -118,13 +118,11 @@ def main() -> None:
         )
     lines.append("")
 
-    # K2: verify_chain() integrity check on the WORM repository.
-    worm_repo = result.get("worm_repo")
-    db = result.get("_db")
-    chain_ok = worm_repo.verify_chain() if worm_repo is not None else None
+    # K2: verify_chain() integrity check. run_workflow now closes the DB and
+    # returns the verify_chain() result directly (audit I3); no open connection
+    # to manage here.
+    chain_ok = result.get("worm_chain_verified")
     chain_check_ts = datetime.now(timezone.utc).isoformat()
-    if db is not None:
-        db.close()
 
     lines.append("## WORM Chain Integrity (K2)\n")
     lines.append(f"- **`verify_chain()` result:** `{chain_ok}`")

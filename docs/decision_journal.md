@@ -916,3 +916,71 @@ Original spec was 3 cycles max. Ran 16 docs through the pipeline; the longest-fo
 
 ### Related
 DJ-007, Session 5B Log architectural deltas, P23.
+
+---
+
+## DJ-022: Codebase-describing doc briefs must include the actual API surface
+Date: 2026-05-11
+Session: 6 Task 3
+Status: Decided
+Owner: Kamil
+
+### The Question
+The Session 6 audit found that USAGE.md and ARCHITECTURE.md, both VERIFIED by the Doc QC pipeline in Session 5B, described a fabricated API (a `ComplianceEngine` class, a `policies/` directory, a three-gate architecture, Pinecone, S3 Object Lock, asyncio orchestration, none of which exist). The Verifier passed them because it checks citations, em dashes, and word count, not whether prose matches the codebase. The Author Agent had nothing in its brief grounding it to the real `run_workflow` function and the real 3-node LangGraph. How do we prevent codebase-describing docs from hallucinating?
+
+### Options Considered
+- A. Add a factual-accuracy check to the Verifier (parse code symbols from the doc, confirm they exist in the codebase). Powerful but hard: distinguishing "describes a real symbol" from "mentions a word that happens to be a symbol" is fuzzy, and the Verifier is supposed to be deterministic and cheap.
+- B. Require briefs for codebase-describing docs (README, USAGE, ARCHITECTURE) to include a "hard accuracy rules" section enumerating the real API surface, the real package layout, and an explicit "do not invent" list. The Author then has the ground truth in its prompt.
+- C. Hand-write the codebase-describing docs instead of generating them.
+
+### Decision
+B. Briefs for codebase-describing docs carry a "hard accuracy rules" section with the real API and an explicit do-not-invent list. The prose-path Verifier resolver added in DJ-020 catches fabricated paths; the brief grounding catches fabricated APIs and architecture. Confidence: High.
+
+### Why This Choice
+The Verifier's job is mechanical checks (citations resolve, no em dashes, word floor met). Factual accuracy against an evolving codebase is not mechanically checkable without a brittle code-parsing step. The cheaper, more robust fix is to feed the Author the ground truth: list the real entry points, the real package directories, the real return shapes, and the things it must not invent. USAGE.md, ARCHITECTURE.md, and README.md were re-run through the pipeline with such briefs and now match reality. The prose-path resolver (DJ-020) is the backstop: a fabricated `src/brandguard/policies/` path now fails the Verifier.
+
+### What This Forecloses
+Briefs for codebase-describing docs are now longer and need maintenance: when the real API changes, the brief's "hard accuracy rules" section must be updated, or the next regeneration will re-introduce drift between brief and code. This is a small recurring cost. It does not catch hallucinated prose that does not reference a backtick-quoted path or a structured citation (e.g., an invented class name mentioned without backticks). That residual gap is accepted; a Codex-style audit pass (like the one that surfaced this) is the catch-all.
+
+### Downstream Implications
+README.brief.md, usage.brief.md, and architecture.brief.md updated with hard accuracy rules. Future codebase-describing docs follow the pattern. If a future audit finds the same class of hallucination, that is a signal to extend the brief, not to add a fragile accuracy checker to the Verifier.
+
+### Interview Framing
+The doc pipeline VERIFIED a USAGE doc that described an API that does not exist. The Verifier checks citations and style, not whether prose matches the code. The fix: briefs for codebase-describing docs now include the real API surface and an explicit do-not-invent list, and the Verifier got a prose-path resolver so fabricated file paths fail. Caught by an external-style audit; fixed by grounding the Author, not by making the Verifier smarter.
+
+### Related
+DJ-007 (Doc QC pipeline), DJ-018 (file anchors banned), DJ-020 (prose-path resolver), Session 6 audit findings C1, C2, I1.
+
+---
+
+## DJ-023: ragas dependency removed; metric semantics kept as locally-implemented prompts
+Date: 2026-05-11
+Session: 6 Task 3
+Status: Decided
+Owner: Kamil
+
+### The Question
+ADR-004 chose ragas as the eval framework. In practice the eval harness implements its own faithfulness and answer-relevance prompts ("ragas semantics, locally implemented prompts") and never imports ragas; the package was pinned in pyproject.toml and requirements.txt and pulled a large transitive dependency tree for nothing. The Session 6 audit flagged it. Remove the dependency, or actually wire ragas in?
+
+### Options Considered
+- A. Remove ragas from dependencies. Keep the metric definitions (faithfulness, answer relevance, context precision/recall) as locally-implemented LLM-judge prompts and deterministic set math. The "ragas semantics" wording stays in docstrings.
+- B. Actually import and use ragas. Requires configuring ragas to use the Anthropic LLM (via a langchain adapter) and an embedding model; adds the langchain dependency stack on top of ragas.
+- C. Keep ragas pinned "for future use" without using it.
+
+### Decision
+A. Remove ragas. Keep the semantics. Confidence: High.
+
+### Why This Choice
+A dependency that is pinned but never imported is dead weight: it bloats the install, slows CI, and misleads anyone reading the manifest. The eval harness already implements the metrics it needs with the same conceptual definitions ragas uses; the implementation is local Anthropic-SDK prompts plus deterministic set comparison, which fits the project's "default to deterministic, LLM-judged only for offline regression" rule (P22). Wiring real ragas in would mean adopting the langchain adapter stack to feed it the Anthropic LLM, which is a heavier dependency than the metric we are computing. ADR-004's choice of "ragas as the eval framework" is now more accurately stated as "ragas semantics, locally implemented", and the docstrings say so.
+
+### What This Forecloses
+The eval harness no longer benefits from any future ragas improvements (new metrics, better prompts, calibration work). If ragas becomes substantially better than the local implementation, re-adopting it means taking on the langchain adapter stack. Acceptable: the metrics are stable and the local implementation is auditable.
+
+### Downstream Implications
+pyproject.toml and requirements.txt no longer list ragas. ADR-004 should note the implementation reality (semantics kept, library dropped) when next revised. The eval harness module docstring already says "ragas semantics, locally implemented prompts"; that wording is now load-bearing, not aspirational.
+
+### Interview Framing
+ADR-004 said ragas; the harness implements ragas's metric definitions with local Anthropic prompts and never imports the library. An audit flagged the dead dependency. I removed it. Wiring real ragas in would mean adopting the langchain adapter stack to feed it our LLM, which is heavier than the metric. The semantics stay; the library goes.
+
+### Related
+ADR-004 (eval framework), DJ-006 (P22, deterministic-by-default), Session 6 audit finding I2.

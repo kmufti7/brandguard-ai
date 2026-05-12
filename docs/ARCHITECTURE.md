@@ -1,6 +1,6 @@
 ---
 state: VERIFIED
-timestamp: 2026-05-11T22:44:52.179714+00:00
+timestamp: 2026-05-12T00:20:10.406973+00:00
 brief: scripts/doc_pipeline/briefs/architecture.brief.md
 mode: encoded
 plugin_command: 
@@ -8,159 +8,100 @@ framework:
 word_count_floor: 1200
 ---
 
-# Architecture
+# ARCHITECTURE
 
 ## System Overview
 
-BrandGuard AI is a governed generative AI system for marketing content review, built on LangGraph workflows that coordinate four native components: a Retrieval-Augmented Generation (RAG) pipeline, a legal brand review gate, a WORM logger, and a kill-switch guard. The system processes marketing copy through retrieval, generation, and governance stages before content reaches publication systems.
+BrandGuard AI is a governed marketing AI system that produces marketing copy for Strand Wireless products while enforcing legal and brand guardrails. The core workflow is a three-node LangGraph `StateGraph` wired in sequence: `audience_discovery -> rag_copy_generation -> legal_brand_review_gate`, then END.
 
-### Core Workflow
+The state object is `BrandGuardState`, which subclasses `IntelliFlowState` from intelliflow-core. It is a Pydantic frozen dataclass; each node returns a `model_copy(update=...)` to produce the next state. This immutable design ensures state transitions are auditable and deterministic.
 
-The system accepts marketing copy as input and routes it through a deterministic LangGraph workflow. The audience analyzer extracts targeting parameters (demographic, channel, product line). The RAG component retrieves relevant brand guidelines, compliance rules, and past review decisions from a vector-indexed corpus. The generation stage produces reasoning and a classification (APPROVE, REVISE, BLOCK). The legal brand review gate applies Strand Wireless brand policies using a retriever-augmented prompt and deterministic checks. Finally, the WORM logger records all decisions and reasoning to immutable append-only storage.
-
-BrandGuard AI gates content before publication. Upstream marketing systems are contractually required to honor BLOCK decisions and may not override them. This ensures governance is integrated into the marketing pipeline itself, not applied after generation is complete.
-
-### Immutable Audit Logging (WORM)
-
-All decisions, prompts, retrieved context, and reasoning are written to a Write-Once-Read-Many (WORM) log. Each entry includes the content reviewed, timestamp (UTC), decision, confidence score, retrieved context IDs, model version, and the temperature setting used. WORM storage is backed by append-only cloud infrastructure (AWS S3 with Object Lock enabled on Strand Wireless accounts). This satisfies recordkeeping obligations under 47 CFR 64.2011 Section (d), which requires telecommunications service providers to retain records of compliance decisions for network management and consumer protection review. Strand Wireless, as a licensed telecommunications carrier, is subject to this regulation; BrandGuard AI's audit trail serves as Strand Wireless's compliance evidence in regulatory audits or consumer disputes.
-
-### Kill-Switch Guard
-
-The kill-switch guard is a runtime circuit breaker that halts all content review if internal consistency checks fail. Triggers include: model serving unavailability, retrieval corpus corruption, WORM append failures, or repeated gate reasoning contradictions. When triggered, the system returns BLOCK for all pending requests and alerts the on-call Reliability Engineer within 2 minutes via PagerDuty integration (see src/brandguard/governance/kill_switch_guard.py). No override capability exists; manual intervention requires a post-incident review before restart.
-
----
+Two cross-cutting systems instrument the workflow. The WORM Logger (imported from intelliflow-core) writes an append-only event chain to SQLite with HMAC-SHA256 chaining. It emits a `TOOL_EXECUTED` enter event and exit event per node; the exit event includes `elapsed_ms`. The workflow also emits `WORKFLOW_START` when `run_workflow()` is called and `WORKFLOW_END` when all nodes complete. The Kill-Switch Guard (also from intelliflow-core) is checked on entry to every node. It holds a list of `GovernanceRule` objects and calls `intercept(state)`. The default rule is `audience_query_required`, which passes only if the audience query is non-empty. If any rule fails, the guard raises `KillSwitchTrippedException`. The `run_workflow` function catches this exception, writes a `KILL_SWITCH_TRIGGERED` event to the WORM chain, and returns `kill_switch_triggered=True` with `final_state=None`.
 
 ## Component Deep Dive
 
-### 1. Audience Analyzer
+### Audience Discovery Agent
 
-**File:** src/brandguard/analysis/audience_analyzer.py
+The Audience Discovery Agent in src/brandguard/agents/audience_discovery.py accepts a natural-language audience query and extracts a structured filter dictionary via an LLM prompt. The filter keys are field names from the synthetic CRM corpus, and values are constraints (e.g., `{"state": "CA", "monthly_spend_usd": {"$gte": 100}}`).
 
-**Contract:** Accepts (content: str, metadata: dict) where metadata contains optional keys: `product_line`, `target_demographic`, `channel` (email, social, web). Returns (audience_context: dict) with keys: `inferred_demographic`, `product_category`, `regulatory_zone` (US region or country).
+The extracted filter is passed to `_sanitize_filter()`, which validates each key against the 17 known fields in the corpus and drops invalid keys. It also validates SKU references: any SKU in the filter must exist in data/product_fact_sheet.md. Invalid SKUs are dropped silently.
 
-The analyzer uses a small language model (3B parameters, quantized to int8) to extract targeting signals from content and metadata without rewriting the copy. It runs synchronously with a 500ms timeout. If timeout occurs, it returns a default conservative context (empty product line, unspecified demographic) that triggers stricter gate checks.
+The sanitized filter is then applied by `apply_filter()`, which evaluates it deterministically over data/synthetic_crm_corpus.json. This corpus contains 500 customer records generated with seed=42 for reproducibility. The agent does not filter records itself; only the deterministic `apply_filter()` function does. The output is a list of matched records (typically 5 to 50 records per query) and a count.
 
-### 2. RAG Pipeline (Retrieval Stage)
+### RAG Copy Generation Agent
 
-**File:** src/brandguard/retrieval/rag_engine.py
+The RAG Copy Generation Agent in src/brandguard/agents/rag_copy_generation.py retrieves brand and product knowledge to ground the LLM's copy generation.
 
-**Contract:** Accepts (query: str, filters: dict, top_k: int = 10) and returns (contexts: list[dict]) where each dict contains: `source_id`, `text` (up to 512 tokens), `relevance_score` (0.0-1.0), `category` (brand_guideline | compliance_rule | past_decision).
+It chunks two sources. The brand voice data/brand_voice.md is divided by section anchors (`§1` through `§7`), creating 7 chunks. The product fact sheet data/product_fact_sheet.md is chunked by the inline anchors `[fact_sheet:<sku>:<field>]` (for example, `[fact_sheet:strand_flex_100:autopay_disclosure]`), creating one chunk per anchor. Each chunk is a string.
 
-The retrieval corpus is a Pinecone vector index containing embeddings of Strand Wireless brand guidelines (extracted from data/brand_voice.md), FCC compliance summaries, state telecom regulations, and 500 past review decisions (see s3://brandguard-datasets/golden-set-v2.1.json, last updated 2025-03-14). Queries are embedded using a public model (text-embedding-3-small from OpenAI) and matched against the index with a minimum similarity threshold of 0.65. The pipeline applies client-side filtering to exclude outdated rules (retention_expired = true) before returning results.
+Chunks are embedded using fastembed with the BGE-small model (`BAAI/bge-small-en-v1.5`), a lightweight 384-dimensional embedding. The embeddings are normalized and stored in an in-memory FAISS `IndexFlatIP` (flat index with inner-product similarity), which supports fast retrieval without quantization. At query time, the audience records and matched records from the prior node are embedded, and the top-K chunks (typically K=5 to 10) are retrieved.
 
-### 3. Legal Brand Review Gate
+The retrieved chunks and their anchor IDs are passed to the LLM. The LLM is prompted to generate marketing copy that directly addresses the audience segment, cites facts from the retrieved chunks using inline citation anchors (e.g., `[brand_voice:§3]` or `[fact_sheet:strand_flex_100:autopay_disclosure]`), and adheres to the Strand Wireless brand voice. The brand voice is used both as a retrieval source (so it can be cited in output) and as a deterministic summary in the system prompt [ADR-002]. This ensures copy tone, terminology, and narrative arc are consistent without requiring a second LLM inference.
 
-**File:** src/brandguard/governance/legal_brand_review_gate.py
+The agent returns the generated copy and a list of citation anchors used.
 
-**Contract:** Accepts (content: str, audience_context: dict, retrieved_contexts: list[dict]) and returns (decision: str in [APPROVE, REVISE, BLOCK], reasoning: str, confidence: float in [0.0, 1.0]).
+### Legal and Brand Review Gate
 
-The gate is a multi-stage deterministic scorer followed by a fine-tuned LLM verifier. The deterministic stage checks for hard-stop patterns (e.g., implied health claims for wireless services, regulatory red flags from FCC summaries). If any check triggers, decision = BLOCK immediately. Otherwise, a fine-tuned language model (7B parameters, see ADR-002 for model selection rationale) receives the content, audience context, and retrieved guidelines. The model is prompted to classify the copy and produce detailed reasoning. The gate uses a low temperature setting (0.2) to keep decisions consistent across similar texts.
+The Legal and Brand Review Gate in src/brandguard/governance/legal_brand_review_gate.py is deterministic and fail-closed. It contains no LLM in its routing path [ADR-003]. It validates the copy returned by the RAG agent against three rules.
 
-The gate enforces four Strand Wireless brand policies: (1) no exaggerated speed claims without qualified data; (2) no price comparisons to competitors without attribution; (3) no implied health benefits from RF radiation statements; (4) all offers must include FTC-compliant fine print. Breaches of policies 1-3 return REVISE; breaches of policy 4 return BLOCK.
+**Citation Existence Rule.** Every citation anchor in the output must resolve to one of the retrieved chunks from the RAG agent. The gate maintains a set of valid anchor IDs and checks that each cited anchor is in the set. If an anchor does not exist, the gate blocks the copy.
 
-### 4. WORM Logger
+**Autopay Disclosure Rule.** Strand Wireless has a regulatory requirement: any price quoted for a plan with autopay must be accompanied by the autopay disclosure text. The gate scans the output text for price patterns and plan mentions. If a with-autopay price is found but the disclosure is absent, the gate blocks the copy. The disclosure text is parsed from data/product_fact_sheet.md at import time.
 
-**File:** src/brandguard/governance/worm_logger.py
+**Unlimited Disclosure Rule.** The word "unlimited" must be paired with the soft-cap and speed-throttle disclosure. Specifically, any mention of "unlimited" without the text "100 GB soft cap" and "5 Mbps post-cap" triggers a block. These constants are parsed from data/product_fact_sheet.md at import time (the K3 fix [DJ-014]) to ensure the disclosure text is always in sync with the actual product limits.
 
-**Contract:** Accepts (log_entry: dict) where dict contains: `content_id`, `decision`, `reasoning`, `timestamp`, `model_version`, `retrieved_context_ids`, `temperature`, `confidence_score`. Returns (write_result: dict) with keys: `status` (success | failed), `storage_path` (S3 path), `immutable_hash`.
+The gate returns a `GateDecision` object with `decision` set to either "ALLOW" or "BLOCK", plus a `reason` string explaining the decision for logging and debugging.
 
-The WORM logger writes each review to a timestamped JSON file in S3 (s3://strand-wireless-brandguard-worm-logs/YYYY/MM/DD/HH/). Each file is closed after 1 hour. S3 Object Lock (governance mode) is enabled; objects cannot be deleted or overwritten for 90 days (Strand Wireless retention policy per DJ-001). The logger computes a SHA-256 hash of the entry and stores it; downstream audits can verify integrity by recomputing the hash.
+### Hallucination Evaluation Harness
 
----
+The Hallucination Evaluation Harness in src/brandguard/eval/eval_harness.py measures copy quality against a golden dataset of 20 scenarios stored in data/golden_dataset.json. Each scenario specifies an audience query, expected matched records, and ground-truth marketing copy.
 
-## Governance Primitive Integration
+The harness computes five metrics. Two are LLM-judged: faithfulness (does the generated copy align with the facts in the retrieved chunks?) and answer relevance (does the copy address the audience segment?). These use locally implemented ragas semantics via the Anthropic SDK, not external APIs. Three are deterministic: context precision (what fraction of retrieved chunks are cited in the output, measured as set overlap), context recall (what fraction of ground-truth anchor references should have been retrieved), and citation existence (do all cited anchors resolve, mirroring the gate rule). The brand voice alignment metric is principle-encoded: it checks for banned phrases, em-dash violations, and tone consistency without LLM judgment.
 
-BrandGuard AI consumes three runtime governance primitives from intelliflow-core, a shared library maintained by Kaizen Works:
+The evaluation is run in two parts. Deterministic metrics and the evaluation report (`docs/eval_report_deterministic.md`) are committed to version control [DJ-008]. LLM-judged metrics are written to `eval_output/eval_report_llm.md`, which is gitignored to avoid storing API costs and inference data in the repo. The two reports are intended to be read together.
 
-### WORM Logger Integration
+## Reused Governance Primitives
 
-The WORM logger wraps each decision before return to the calling service. The integration point is in src/brandguard/governance/legal_brand_review_gate.py, line 187 (WORMLoggerClient.append_record). The gate passes the decision, reasoning, confidence, and retrieved context IDs to the logger. If the logger fails (network error, S3 quota exceeded), the gate catches the exception, logs an error, and triggers the kill-switch guard. No decision leaves BrandGuard AI without an attempted WORM write.
+BrandGuard imports three governance primitives from intelliflow-core, the upstream governance kernel. These are not reimplemented in BrandGuard.
 
-### Kill-Switch Guard Integration
+The WORM Logger is an append-only event store backed by SQLite. It computes HMAC-SHA256 hashes over each event payload and chains them: each event includes the hash of the prior event. The `verify_chain()` method recomputes the hash chain from the start; if any hash breaks, the chain is detected as tampered. This design prevents retroactive deletion or mutation of logged events.
 
-The kill-switch guard is polled every 5 seconds by a background health-check thread (src/brandguard/runtime/health_check.py). The guard reads a KillSwitchStatus object from a Redis cache (shared with other Kaizen Works products). If status = TRIGGERED, the health-check thread sets the global variable GATE_ENABLED = false. All subsequent calls to the gate return BLOCK immediately and log an alert. The guard is triggered by one of four conditions: (1) model serving endpoint down for >30 seconds, (2) Pinecone index latency >2 seconds (p99), (3) WORM append fails 3 times in 60 seconds, (4) reasoning contradictions detected 5 times in 10 minutes (see src/brandguard/governance/kill_switch_guard.py for detection logic). Recovery requires manual approval from the on-call SRE and a post-incident review ticket in Jira.
+The Kill-Switch Guard holds a list of `GovernanceRule` objects and exposes an `intercept(state)` method. Each rule can inspect the state and raise `KillSwitchTriggedException` if a condition fails. Rules are checked before each node executes. On exception, the workflow stops and logs the trigger event.
 
-### Token FinOps Tracker Integration
+The Token FinOps Tracker is an accounting system that measures token usage per LLM request. It is imported from intelliflow-core but not yet integrated into the BrandGuard workflow; integration is tracked in the backlog.
 
-BrandGuard AI logs token consumption for each review to the FinOps tracker (intelliflow-core.token_tracker.FinOpsClient). The tracker is instantiated in src/brandguard/main.py and receives three metrics per review: (1) input_tokens (content + retrieved context), (2) completion_tokens (reasoning + decision), (3) model_id (e.g., "fine-tuned-gate-v3"). The tracker aggregates daily spend by model and sends alerts if costs exceed $500/day (Strand Wireless budget ceiling per DJ-015). FinOps data is exported to s3://strand-wireless-insights/finops-logs/ hourly for billing reconciliation.
+## Documentation Quality Control Pipeline
 
----
+BrandGuard includes a doc QC pipeline in scripts/doc_pipeline/ that automates the production of high-quality technical and marketing documentation for the product itself (e.g., this ARCHITECTURE document).
+
+The pipeline has four agents. The Author Agent is invoked with a documentation brief and drafts or revises the doc in markdown. It is deployed as a fresh Anthropic API call with a role-isolated system prompt, not as a nested Claude Code process [DJ-016]. The Critic Agent is an LLM-judged rubric evaluator that scores the draft on multiple dimensions (clarity, accuracy, completeness, tone, grammar) and returns a JSON scorecard. The Verifier is a deterministic Python tool that checks banned phrases, em-dash usage, word count floor, citation anchors (including PDR entries and prose file-path resolvers), and cross-doc links. It requires zero LLM calls and blocks any violation. The Orchestrator manages the state machine: DRAFTED -> CRITIQUED -> REVISED -> VERIFIED or FAILED after 5 revision cycles.
+
+All transitions in the pipeline are logged to the shared WORM chain with a trace_id prefix of the form `doc_pipeline:<slug>:<uuid>`. This segments the doc pipeline events from workflow events while keeping them in a single tamper-proof ledger.
+
+The Author and Critic agents are designed to run both on and off Claude Code, so the pipeline can be invoked either as an in-IDE tool or as a standalone script.
 
 ## Data Flow
 
-Marketing copy enters BrandGuard AI through an HTTP endpoint (src/brandguard/api/review_endpoint.py). The request includes content and optional metadata (product line, demographic, channel).
+The end-to-end data flow is linear. An audience query and (optionally) a product SKU filter are provided by the user.
 
-1. **Audience Analysis:** The audience analyzer extracts targeting signals from content and metadata. Runtime: 150-500ms. Output: audience_context (dict).
+1. The audience query enters the Audience Discovery Agent, which extracts a filter and applies it to the synthetic CRM corpus (data/synthetic_crm_corpus.json). The result is a list of matched customer records.
 
-2. **Corpus Filtering:** The retrieval pipeline applies client-side filters to the Pinecone corpus, excluding rules with retention_expired = true or effective_date > now. This reduces search space by ~15% and ensures only current guidance is retrieved.
+2. The matched records are passed to the RAG Copy Generation Agent. The agent retrieves brand voice and fact sheet chunks relevant to the audience segment and product, then prompts the LLM to generate marketing copy with inline citations.
 
-3. **Retrieval:** The query (derived from content and audience_context) is embedded and matched against filtered Pinecone index. Top 10 results are returned with relevance scores >0.65. Runtime: 200-800ms depending on index latency.
+3. The generated copy and citations are passed to the Legal and Brand Review Gate, which validates citations, autopay disclosures, and unlimited disclosures. The gate returns an ALLOW or BLOCK decision.
 
-4. **Generation & Gating:** The legal brand review gate receives content, audience_context, and retrieved contexts. Deterministic checks run first (500us). If no hard-stop, the fine-tuned model classifies the content. The model outputs decision (APPROVE|REVISE|BLOCK), reasoning (100-300 tokens), and confidence (0.0-1.0). Runtime: 1-3 seconds depending on content length.
+4. All nodes write events to the WORM logger, creating a tamper-proof audit trail.
 
-5. **Gate Enforcement:** If decision = BLOCK, a system-level flag prevents downstream systems from publishing. If decision = REVISE, the reasoning and failed policies are returned to the marketer for editing. If decision = APPROVE, the content is marked safe for publication.
-
-6. **WORM Logging:** The gate writes a log entry (content_id, decision, reasoning, retrieved_context_ids, temperature=0.2, confidence, timestamp) to the WORM logger. The logger appends the entry to S3 and returns the immutable storage path. Runtime: 300-700ms.
-
-7. **FinOps Tracking:** Token counts (input + completion) and model_id are sent asynchronously to the FinOps tracker. This does not block the review response.
-
-**Total end-to-end latency:** 2-6 seconds (p50: 3.2s, p99: 5.8s).
-
----
-
-## Evaluation Architecture
-
-BrandGuard AI is evaluated on five metrics split between deterministic checks and LLM-judged assessments. Evaluation targets and their sources are defined as follows:
-
-### Deterministic Metrics
-
-**1. Policy Violation Detection Rate (Target: 95% precision)**
-The gate detects hard-stop patterns (health claims, competitor comparisons, invalid fine print) with 95% precision against the golden test set. Source: internal SLA per DJ-008. The metric is computed as: (true positives) / (true positives + false positives) across all 500 golden test cases in s3://brandguard-datasets/golden-set-v2.1.json (last updated 2025-03-14).
-
-**2. False Positive Rate (Target: ≤5%)**
-The gate incorrectly blocks compliant content at most 5% of the time. Source: internal SLA per DJ-008. False positives are measured by human review of all BLOCK decisions on the golden set; any BLOCK that a qualified compliance officer deems incorrect counts as a false positive.
-
-### LLM-Judged Metrics
-
-**3. Reasoning Consistency Score (Target: 95% consistency)**
-Two independent runs of the gate on the same content (with different random seeds) produce the same decision 95% of the time. Source: internal SLA per DJ-008. The metric averages across 100 held-out test cases; consistency = (agreements) / (100).
-
-**4. Reasoning Quality Score (Target: 4.2 out of 5.0)**
-A secondary LLM (gpt-4, not fine-tuned) evaluates the gate's reasoning on a scale of 1-5 (1 = nonsensical, 5 = clear and actionable). Source: internal SLA per DJ-008. The evaluator is prompted with the content, decision, retrieved context, and reasoning, then asked: "Is the reasoning clear, policy-specific, and actionable for a marketer to revise the copy? (1-5)." The score is the median of 10 independent evaluator runs on 50 golden cases.
-
-**5. Brand Voice Fidelity Score (Target: 4.2 out of 5.0)**
-A human panel (3 Strand Wireless brand managers) rates whether the gate's reasoning reflects Strand Wireless brand voice and policies. Source: internal SLA per DJ-008. Ratings are 1-5; the final score is the median across the panel.
-
-### Golden Dataset
-
-The golden dataset contains 500 manually labeled test cases (s3://brandguard-datasets/golden-set-v2.1.json, last updated 2025-03-14). Each case includes: marketing copy (100-500 tokens), metadata (product line, demographic, channel), ground-truth decision (APPROVE|REVISE|BLOCK per Strand Wireless policy), and annotations from 2+ brand compliance officers. Cases are stratified by product line (wireless plans, devices, enterprise services) and violation type (health claim, competitor comparison, price exaggeration, missing fine print, compliant). Stratification ensures no single category dominates evaluations.
-
-### Evaluation Report Split
-
-Evaluation results are split per DJ-008 as follows: (1) weekly reports (Monday) cover deterministic metrics on the previous week's production traffic (10,000+ reviews), (2) monthly reports (first Friday) cover all five metrics on the golden dataset, (3) post-deployment reports verify metrics on the first 500 reviews after each model update.
-
----
+If the gate blocks the copy, the workflow returns the blocked decision and a reason. If it allows, the copy is returned as the final output.
 
 ## Scaling Strategy
 
-BrandGuard AI is designed to scale from 100 reviews/day (pilot) to 100,000 reviews/day (production) following a staged approach defined in DJ-011.
+Per [DJ-011], RAG copy generation accounts for approximately 75 percent of per-scenario latency, audience discovery for 25 percent, and the legal gate for less than 1 millisecond (based on timing data collected during Session 4.1). The recommended scaling order is:
 
-### Stage 1: Parallelization (Immediate, <1 week)
+1. Parallelize across independent scenarios. Each scenario (audience query + SKU pair) is independent; multiple scenarios can be processed concurrently by distributing them to separate workflow instances.
 
-The audience analyzer, retrieval, and gate are independent; they run in parallel within a single review request. The orchestrator (src/brandguard/orchestration/review_orchestrator.py) spawns three async tasks (asyncio). Expected latency reduction: 30% (from 4.5s to 3.2s p50).
+2. Batch LLM calls. The Audience Discovery and RAG Copy Generation agents are LLM-backed; requests from multiple scenarios can be batched into a single Anthropic API call.
 
-### Stage 2: Batch Processing (Week 2-3)
+3. Cache embeddings and retrieval results. The brand voice and fact sheet chunks are static; their embeddings can be computed once and reused across all scenarios. The FAISS index can be persisted to disk and loaded at startup.
 
-Requests are accumulated into batches of 32 and processed together by the fine-tuned gate model. Batch inference reduces per-token latency by 40% (model serving optimization). A request queue (Redis) holds up to 10,000 pending reviews. Expected throughput increase: 3x (to 300 reviews/day). Batch latency: 2-4 seconds p99.
-
-### Stage 3: Caching (Week 4)
-
-Deterministic gate outputs for identical content are cached in Redis with a 24-hour TTL. Cache hit rate is expected to be 20-30% (many similar marketing variations for the same offer). Cache lookups complete in <50ms. Expected throughput increase: 1.5x additional (to 450 reviews/day).
-
-### Stage 4: Vertical Scaling (Week 5+)
-
-If throughput demand exceeds 450 reviews/day, vertical scaling increases model serving replicas, Pinecone provisioned throughput (from 100 to 1000 queries/second), and WORM logger batch writer thread pool (from 2 to 8 threads). Vertical scaling is bounded by AWS cost (DJ-011 ceiling: $2,000/day). Beyond 50,000 reviews/day, horizontal sharding of the Pinecone index by product line and region is required (Phase 2 roadmap).
-
-### Monitoring & Canary Deployment
-
-Each stage includes a 24-hour canary deployment to 5% of traffic before full rollout. Metrics monitored: p50/p99 latency, BLOCK rate variance, WORM write success rate, FinOps cost. Rollback is automatic if any metric drifts >10% from baseline.
+4. Vertical scaling (larger embedding or generation models) is the last option and should only be considered if the three prior strategies are exhausted and additional latency reduction is required.

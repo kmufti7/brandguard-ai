@@ -5,7 +5,7 @@ State machine (DJ-007):
     DRAFTED -> CRITIQUED -> (PASS) -> REVISED [unused, marker for cycle]
                          -> (FAIL) -> REVISED -> CRITIQUED -> ...
     CRITIQUED (PASS) + VERIFIER (PASS) -> VERIFIED -> commit
-    Max 3 critique/revise cycles. If no VERIFIED after 3 cycles -> FAILED.
+    Max 5 critique/revise cycles (DJ-021; was 3). If no VERIFIED after 5 -> FAILED.
 
 Cross-cutting concerns:
 

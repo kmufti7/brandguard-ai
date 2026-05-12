@@ -310,27 +310,31 @@ def run_workflow(
             {"trace_id": initial.trace_id, "status": "kill_switch"},
         )
         chain = worm.get_chain()
+        chain_ok = worm.verify_chain()
         db.close()
         return {
             "final_state": None,
             "trace_id": initial.trace_id,
             "worm_chain": chain,
+            "worm_chain_verified": chain_ok,
             "kill_switch_triggered": True,
             "failed_rules": failed_rule_ids,
-            "worm_repo": None,
             "node_timings_ms": dict(timings),
         }
 
     worm.log_event(initial.trace_id, "WORKFLOW_END", {"trace_id": initial.trace_id})
     chain = worm.get_chain()
+    chain_ok = worm.verify_chain()
+    # Close the DB before returning. Callers receive the materialized chain and
+    # the verify_chain() result; they do not get an open connection (audit I3).
+    db.close()
     return {
         "final_state": final,
         "trace_id": initial.trace_id,
         "worm_chain": chain,
+        "worm_chain_verified": chain_ok,
         "kill_switch_triggered": False,
         "node_timings_ms": dict(timings),
-        "worm_repo": worm,
-        "_db": db,
     }
 
 

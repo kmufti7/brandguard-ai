@@ -1,8 +1,8 @@
 {
   "doc_slug": "architecture",
-  "trace_id": "doc_pipeline:architecture:00b14c5b-a270-45e0-9aba-34dd7f9016d8",
+  "trace_id": "doc_pipeline:architecture:cbfef899-9c34-4538-a324-89921832ba41",
   "final_state": "VERIFIED",
-  "cycles_used": 3,
+  "cycles_used": 1,
   "final_critique": {
     "overall_pass": true,
     "dimensions": {
@@ -14,12 +14,12 @@
       "Evidence Trail": {
         "score": 8,
         "issues": [
-          "Claim about 47 CFR 64.2011 Section (d) regulatory requirement (Immutable Audit Logging section) lacks a citation or link to the regulation itself; readers cannot verify the regulation or its applicability.",
-          "Claim that 'Strand Wireless, as a licensed telecommunications carrier, is subject to this regulation' is author-asserted without evidence of carrier status or regulatory filing reference."
+          "Line ~90 (Hallucination Evaluation Harness): 'locally implemented ragas semantics via the Anthropic SDK' lacks a citation or repo link to the implementation.",
+          "Line ~130 (Scaling Strategy): The latency breakdown (75% RAG, 25% audience discovery, <1ms gate) cites [DJ-011] but no link to that decision record or timing data is provided in the doc."
         ],
         "asks": [
-          "Add a footnote or inline reference to 47 CFR 64.2011(d) with a link to the FCC regulation.",
-          "Cite or reference documentation confirming Strand Wireless's licensed carrier status (e.g., FCC license number or regulatory filing)."
+          "Add a file path or repo link to the ragas implementation in the evaluation harness section.",
+          "Provide a link or file path to [DJ-011] or summarize the timing methodology inline so readers can verify the 75/25 split."
         ]
       },
       "Honest Scope": {
@@ -30,14 +30,14 @@
       "Voice": {
         "score": 8,
         "issues": [
-          "Section 'Evaluation Architecture' contains corporate-sounding language ('LLM-judged assessments,' 'median of 10 independent evaluator runs') that drifts slightly from Strand Wireless's plain, numbers-first voice. Reads more like a research paper than a direct technical brief."
+          "Line ~40 ('The Kill-Switch Guard (also from intelliflow-core) is checked on entry to every node'): Slightly repetitive phrasing after the prior sentence already introduced the guard. Minor lapses in terseness."
         ],
         "asks": [
-          "Simplify the evaluation methodology prose: instead of 'A secondary LLM (gpt-4, not fine-tuned) evaluates...,' use 'We run gpt-4 (untuned) to score reasoning quality on a 1\u20135 scale.'"
+          "Tighten line ~40 by removing the redundant re-introduction of the Kill-Switch Guard; consolidate its explanation into one concise statement."
         ]
       }
     },
-    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Claim about 47 CFR 64.2011 Section (d) regulatory requirement (Immutable Audit Logging section) lacks a citation or link to the regulation itself; readers cannot verify the regulation or its applicability.\",\n        \"Claim that 'Strand Wireless, as a licensed telecommunications carrier, is subject to this regulation' is author-asserted without evidence of carrier status or regulatory filing reference.\"\n      ],\n      \"asks\": [\n        \"Add a footnote or inline reference to 47 CFR 64.2011(d) with a link to the FCC regulation.\",\n        \"Cite or reference documentation confirming Strand Wireless's licensed carrier status (e.g., FCC license number or regulatory filing).\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Section 'Evaluation Architecture' contains corporate-sounding language ('LLM-judged assessments,' 'median of 10 independent evaluator runs') that drifts slightly from Strand Wireless's plain, numbers-first voice. Reads more like a research paper than a direct technical brief.\"\n      ],\n      \"asks\": [\n        \"Simplify the evaluation methodology prose: instead of 'A secondary LLM (gpt-4, not fine-tuned) evaluates...,' use 'We run gpt-4 (untuned) to score reasoning quality on a 1\u20135 scale.'\"\n      ]\n    }\n  }\n}\n```"
+    "raw": "```json\n{\n  \"dimensions\": {\n    \"Specificity\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Evidence Trail\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line ~90 (Hallucination Evaluation Harness): 'locally implemented ragas semantics via the Anthropic SDK' lacks a citation or repo link to the implementation.\",\n        \"Line ~130 (Scaling Strategy): The latency breakdown (75% RAG, 25% audience discovery, <1ms gate) cites [DJ-011] but no link to that decision record or timing data is provided in the doc.\"\n      ],\n      \"asks\": [\n        \"Add a file path or repo link to the ragas implementation in the evaluation harness section.\",\n        \"Provide a link or file path to [DJ-011] or summarize the timing methodology inline so readers can verify the 75/25 split.\"\n      ]\n    },\n    \"Honest Scope\": {\n      \"score\": 9,\n      \"issues\": [],\n      \"asks\": []\n    },\n    \"Voice\": {\n      \"score\": 8,\n      \"issues\": [\n        \"Line ~40 ('The Kill-Switch Guard (also from intelliflow-core) is checked on entry to every node'): Slightly repetitive phrasing after the prior sentence already introduced the guard. Minor lapses in terseness.\"\n      ],\n      \"asks\": [\n        \"Tighten line ~40 by removing the redundant re-introduction of the Kill-Switch Guard; consolidate its explanation into one concise statement.\"\n      ]\n    }\n  }\n}\n```"
   },
   "final_verifier": {
     "passed": true,
@@ -47,65 +47,17 @@
     {
       "cycle": 0,
       "state": "DRAFTED",
-      "timestamp": "2026-05-11T22:43:16.197030+00:00",
+      "timestamp": "2026-05-12T00:20:10.407417+00:00",
       "detail": {
         "state": "DRAFTED",
         "output_path": "docs/ARCHITECTURE.md",
-        "word_count": 2571
+        "word_count": 1722
       }
     },
     {
       "cycle": 1,
       "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:43:25.453797+00:00",
-      "detail": {
-        "overall_pass": false,
-        "scores": {
-          "Specificity": 9,
-          "Evidence Trail": 6,
-          "Honest Scope": 8,
-          "Voice": 8
-        }
-      }
-    },
-    {
-      "cycle": 1,
-      "state": "REVISED",
-      "timestamp": "2026-05-11T22:44:01.474258+00:00",
-      "detail": {
-        "state": "REVISED",
-        "output_path": "docs/ARCHITECTURE.md",
-        "word_count": 1888
-      }
-    },
-    {
-      "cycle": 2,
-      "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:44:10.599234+00:00",
-      "detail": {
-        "overall_pass": false,
-        "scores": {
-          "Specificity": 9,
-          "Evidence Trail": 6,
-          "Honest Scope": 8,
-          "Voice": 8
-        }
-      }
-    },
-    {
-      "cycle": 2,
-      "state": "REVISED",
-      "timestamp": "2026-05-11T22:44:52.180262+00:00",
-      "detail": {
-        "state": "REVISED",
-        "output_path": "docs/ARCHITECTURE.md",
-        "word_count": 2121
-      }
-    },
-    {
-      "cycle": 3,
-      "state": "CRITIQUED",
-      "timestamp": "2026-05-11T22:44:57.879025+00:00",
+      "timestamp": "2026-05-12T00:20:15.271068+00:00",
       "detail": {
         "overall_pass": true,
         "scores": {
@@ -117,9 +69,9 @@
       }
     },
     {
-      "cycle": 3,
+      "cycle": 1,
       "state": "VERIFIED",
-      "timestamp": "2026-05-11T22:44:57.925871+00:00",
+      "timestamp": "2026-05-12T00:20:15.314871+00:00",
       "detail": {
         "verifier": {
           "passed": true,
